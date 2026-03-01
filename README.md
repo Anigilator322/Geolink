@@ -50,7 +50,6 @@ dotnet run
 | Redis | localhost:6379 | Кеш локаций |
 | pgAdmin | http://localhost:5050 | UI для PostgreSQL (dev) |
 
-pgAdmin credentials: `admin@geolink.com` / `admin`
 
 ### Остановка
 
@@ -102,3 +101,16 @@ flutter run
 | **Friends** | `GET /api/friends`, `POST /api/friends/request`, `PUT /api/friends/{id}` |
 | **Location** | `PUT /api/location`, SignalR Hub: `/hubs/geolink` |
 | **Events** | `GET /api/events`, `POST /api/events`, `GET /api/events/nearby` |
+
+## Local Secrets Setup
+
+```bash
+# Create local env file for docker-compose
+cp .env.example .env
+
+# Configure API secrets (stored outside repo)
+cd Geolink.API
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=geolink;Username=postgres;Password=<NEW_PASSWORD>"
+dotnet user-secrets set "Jwt:Key" "<STRONG_RANDOM_KEY_32+>"
+```
