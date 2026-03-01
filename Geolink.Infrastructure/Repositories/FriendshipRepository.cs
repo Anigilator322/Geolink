@@ -23,7 +23,7 @@ public class FriendshipRepository : Repository<Friendship>, IFriendshipRepositor
                 cancellationToken);
     }
 
-    public async Task<IEnumerable<Friendship>> GetUserFriendsAsync(Guid userId, FriendshipStatus status = FriendshipStatus.Accepted, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Friendship>> GetUserFriendsAsync(Guid userId, FriendshipStatus status = FriendshipStatus.Approved, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(f => f.Requester)
@@ -47,7 +47,7 @@ public class FriendshipRepository : Repository<Friendship>, IFriendshipRepositor
             .AnyAsync(f => 
                 ((f.RequesterId == userId1 && f.AddresseeId == userId2) ||
                  (f.RequesterId == userId2 && f.AddresseeId == userId1)) &&
-                f.Status == FriendshipStatus.Accepted, 
+                f.Status == FriendshipStatus.Approved, 
                 cancellationToken);
     }
 }
