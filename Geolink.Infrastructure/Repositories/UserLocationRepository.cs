@@ -22,7 +22,7 @@ public class UserLocationRepository : Repository<UserLocation>, IUserLocationRep
     public async Task<IEnumerable<UserLocation>> GetFriendsLocationsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var friendIds = await _context.Friendships
-            .Where(f => (f.RequesterId == userId || f.AddresseeId == userId) && f.Status == FriendshipStatus.Accepted)
+            .Where(f => (f.RequesterId == userId || f.AddresseeId == userId) && f.Status == FriendshipStatus.Approved)
             .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
             .ToListAsync(cancellationToken);
 

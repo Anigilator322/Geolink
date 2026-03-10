@@ -3,7 +3,6 @@ namespace Geolink.Application.DTOs.Location;
 public record LocationDto(
     Guid UserId,
     string Username,
-    string? DisplayName,
     string? AvatarUrl,
     double Latitude,
     double Longitude,

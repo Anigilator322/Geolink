@@ -1,20 +1,27 @@
-using Geolink.Domain.Common;
+using Microsoft.AspNetCore.Identity;
 
 namespace Geolink.Domain.Entities;
 
-public class User : BaseEntity
+/// <summary>
+/// Application user. Email is the primary identifier; login is done via OTP sent to Email.
+/// </summary>
+public class User : IdentityUser<Guid>
 {
-    public string Email { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-    public string? DisplayName { get; set; }
+    // IdentityUser already provides: Id, Email, NormalizedEmail, UserName, NormalizedUserName,
+    // SecurityStamp, ConcurrencyStamp, EmailConfirmed, LockoutEnd, AccessFailedCount, etc.
+
     public string? AvatarUrl { get; set; }
     public string? Bio { get; set; }
-    public bool IsActive { get; set; } = true;
-    public DateTime? LastSeenAt { get; set; }
+
+    /// <summary>Account is approved by admin or after first successful login.</summary>
+    public bool Approved { get; set; } = false;
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
     public UserLocation? CurrentLocation { get; set; }
+    public UserSettings? Settings { get; set; }
     public ICollection<Friendship> SentFriendRequests { get; set; } = new List<Friendship>();
     public ICollection<Friendship> ReceivedFriendRequests { get; set; } = new List<Friendship>();
     public ICollection<Event> CreatedEvents { get; set; } = new List<Event>();

@@ -3,7 +3,7 @@ namespace Geolink.Domain.Enums;
 public enum FriendshipStatus
 {
     Pending = 0,
-    Accepted = 1,
+    Approved = 1,
     Declined = 2,
-    Blocked = 3
+    Removed = 3
 }

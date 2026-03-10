@@ -13,6 +13,26 @@ namespace Geolink.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+            var jwtKey = builder.Configuration["Jwt:Key"];
+            if (builder.Environment.IsDevelopment() || builder.Environment.IsProduction())
+            {
+                if (string.IsNullOrWhiteSpace(defaultConnection))
+                {
+                    throw new InvalidOperationException("Missing ConnectionStrings:DefaultConnection. Configure it via user-secrets or environment variables.");
+                }
+
+                if (string.IsNullOrWhiteSpace(jwtKey))
+                {
+                    throw new InvalidOperationException("Missing Jwt:Key. Configure it via user-secrets or environment variables.");
+                }
+
+                if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+                {
+                    throw new InvalidOperationException("Jwt:Key must be at least 32 bytes.");
+                }
+            }
+
             // Add layers
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
@@ -35,7 +55,7 @@ namespace Geolink.API
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!)),
                     ValidateIssuer = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidateAudience = true,

@@ -21,12 +21,13 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         return await _dbSet
             .Include(e => e.Creator)
+            .Include(e => e.EventSettings)
             .Include(e => e.Participants)
-            .Where(e => e.Status == EventStatus.Scheduled || e.Status == EventStatus.Active)
-            .Where(e => e.StartsAt > DateTime.UtcNow.AddHours(-1))
+            .Where(e => e.EventSettings.Status == EventStatus.Scheduled || e.EventSettings.Status == EventStatus.Active)
+            .Where(e => e.EventSettings.StartsAt > DateTime.UtcNow.AddHours(-1))
             .Where(e => e.Latitude >= latitude - latDelta && e.Latitude <= latitude + latDelta)
             .Where(e => e.Longitude >= longitude - lonDelta && e.Longitude <= longitude + lonDelta)
-            .OrderBy(e => e.StartsAt)
+            .OrderBy(e => e.EventSettings.StartsAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
     }
@@ -35,9 +36,10 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Creator)
+            .Include(e => e.EventSettings)
             .Include(e => e.Participants)
             .Where(e => e.CreatorId == userId || e.Participants.Any(p => p.UserId == userId))
-            .OrderByDescending(e => e.StartsAt)
+            .OrderByDescending(e => e.EventSettings.StartsAt)
             .ToListAsync(cancellationToken);
     }
 
@@ -45,9 +47,10 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Creator)
+            .Include(e => e.EventSettings)
             .Include(e => e.Participants)
-            .Where(e => e.Status == EventStatus.Scheduled && e.StartsAt > DateTime.UtcNow)
-            .OrderBy(e => e.StartsAt)
+            .Where(e => e.EventSettings.Status == EventStatus.Scheduled && e.EventSettings.StartsAt > DateTime.UtcNow)
+            .OrderBy(e => e.EventSettings.StartsAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
     }
@@ -56,6 +59,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Creator)
+            .Include(e => e.EventSettings)
             .Include(e => e.Participants)
                 .ThenInclude(p => p.User)
             .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);

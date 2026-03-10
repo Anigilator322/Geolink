@@ -6,7 +6,6 @@ public record EventDto(
     Guid Id,
     Guid CreatorId,
     string CreatorUsername,
-    string? CreatorDisplayName,
     string Title,
     string? Description,
     double Latitude,
@@ -17,8 +16,9 @@ public record EventDto(
     int? MaxParticipants,
     int CurrentParticipants,
     bool IsPublic,
+    bool RequireRegistration,
     EventStatus Status,
-    string? ImageUrl,
+    string? PreviewUrl,
     DateTime CreatedAt
 );
 
@@ -32,7 +32,8 @@ public record CreateEventRequest(
     DateTime? EndsAt,
     int? MaxParticipants,
     bool IsPublic = true,
-    string? ImageUrl = null
+    bool RequireRegistration = false,
+    string? PreviewUrl = null
 );
 
 public record UpdateEventRequest(
@@ -45,13 +46,13 @@ public record UpdateEventRequest(
     DateTime? EndsAt,
     int? MaxParticipants,
     bool? IsPublic,
-    string? ImageUrl
+    bool? RequireRegistration,
+    string? PreviewUrl
 );
 
 public record EventParticipantDto(
     Guid UserId,
     string Username,
-    string? DisplayName,
     string? AvatarUrl,
     ParticipantStatus Status,
     DateTime? RespondedAt

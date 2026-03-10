@@ -1,8 +1,6 @@
-using Geolink.Domain.Common;
-
 namespace Geolink.Application.Interfaces;
 
-public interface IRepository<T> where T : BaseEntity
+public interface IRepository<T> where T : class
 {
     Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default);

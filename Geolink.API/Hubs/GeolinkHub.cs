@@ -113,8 +113,7 @@ public class GeolinkHub : Hub
             {
                 await Clients.Client(connectionId).SendAsync("FriendLocationUpdated", new LocationDto(
                     userId.Value,
-                    user?.Username ?? "",
-                    user?.DisplayName,
+                    user?.UserName ?? "",
                     user?.AvatarUrl,
                     request.Latitude,
                     request.Longitude,
@@ -136,8 +135,7 @@ public class GeolinkHub : Hub
             await Clients.Client(connectionId).SendAsync("FriendRequestReceived", new
             {
                 UserId = userId.Value,
-                Username = user?.Username,
-                DisplayName = user?.DisplayName,
+                Username = user?.UserName,
                 AvatarUrl = user?.AvatarUrl
             });
         }

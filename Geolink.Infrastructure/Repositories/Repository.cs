@@ -1,11 +1,10 @@
 using Geolink.Application.Interfaces;
-using Geolink.Domain.Common;
 using Geolink.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Geolink.Infrastructure.Repositories;
 
-public class Repository<T> : IRepository<T> where T : BaseEntity
+public class Repository<T> : IRepository<T> where T : class
 {
     protected readonly GeolinkDbContext _context;
     protected readonly DbSet<T> _dbSet;
