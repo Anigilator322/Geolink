@@ -35,7 +35,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verify Code'),
+        title: const Text('Подтвердить код'),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -53,7 +53,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                 children: [
                   const SizedBox(height: 40),
                   const Text(
-                    'Enter verification code',
+                    'Введите код подтверждения',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -62,7 +62,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'We sent a code to ${authProvider.email ?? 'your email'}',
+                    'Мы отправили код на ${authProvider.email ?? 'вашу почту'}',
                     style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
@@ -79,7 +79,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                         border: Border.all(color: Colors.red),
                       ),
                       child: Text(
-                        authProvider.errorMessage ?? 'An error occurred',
+                        authProvider.errorMessage ?? 'Ошибка',
                         style: const TextStyle(color: Colors.red),
                       ),
                     ),
@@ -97,7 +97,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                     decoration: InputDecoration(
-                      labelText: '6-digit code',
+                      labelText: '6-значный код',
                       hintText: '000000',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -114,7 +114,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                             if (code.length != 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please enter a valid 6-digit code'),
+                                  content: Text('Пожалуйста, введите действительный 6-значный код'),
                                 ),
                               );
                               return;
@@ -137,11 +137,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('Verify'),
+                        : const Text('Подтвердить'),
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Mock Mode: Enter any 6-digit code',
+                    'Режим тестирования: введите любой 6-значный код',
                     style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,

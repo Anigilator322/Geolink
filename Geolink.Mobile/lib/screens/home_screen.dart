@@ -9,7 +9,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Geolink Home'),
+        title: const Text('Главная Geolink'),
         centerTitle: true,
         elevation: 0,
       ),
@@ -37,7 +37,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        'Successfully Logged In!',
+                        'Успешно вошли!',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -46,17 +46,17 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       if (authProvider.authResponse != null) ...[
                         Text(
-                          'Email: ${authProvider.authResponse!.email}',
+                          'Почта: ${authProvider.authResponse!.email}',
                           style: const TextStyle(fontSize: 16),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Username: ${authProvider.authResponse!.username}',
+                          'Имя пользователя: ${authProvider.authResponse!.username}',
                           style: const TextStyle(fontSize: 16),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'User ID: ${authProvider.authResponse!.userId}',
+                          'ID пользователя: ${authProvider.authResponse!.userId}',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.grey,
@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Welcome to Geolink!',
+                  'Добро пожаловать в Geolink!',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -77,7 +77,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Share your location with friends and create events together.',
+                  'Делитесь своей геолокацией с друзьями и создавайте события вместе.',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
@@ -96,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
+                  label: const Text('Выход'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.red,

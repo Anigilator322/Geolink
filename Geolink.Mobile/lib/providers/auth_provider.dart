@@ -14,7 +14,7 @@ class AuthProvider extends ChangeNotifier {
   String? errorMessage;
   String? email;
 
-  // OTP verification step
+  // Шаг проверки OTP
   bool isOtpSent = false;
 
   AuthProvider({
@@ -22,7 +22,7 @@ class AuthProvider extends ChangeNotifier {
     required this.storageService,
   });
 
-  /// Send OTP code to email
+  /// Отправить код OTP на почту
   Future<void> sendCode(String emailAddress) async {
     try {
       state = AuthState.loading;
@@ -46,7 +46,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Verify OTP code
+  /// Проверить код OTP
   Future<void> verifyCode(String code) async {
     try {
       state = AuthState.loading;
@@ -59,7 +59,7 @@ class AuthProvider extends ChangeNotifier {
 
       final response = await authService.verifyCode(email!, code);
 
-      // Save tokens
+      // Сохранить токены
       await storageService.saveTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
@@ -79,7 +79,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Refresh access token
+  /// Обновить токен доступа
   Future<void> refreshAccessToken() async {
     try {
       final refreshToken = await storageService.getRefreshToken();
@@ -106,7 +106,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Check if user is logged in (from storage)
+  /// Проверить вошел ли пользователь (из хранилища)
   Future<void> checkLoginStatus() async {
     try {
       final isLoggedIn = await storageService.isLoggedIn();
@@ -138,7 +138,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Logout
+  /// Выход
   Future<void> logout() async {
     try {
       await storageService.clearAll();

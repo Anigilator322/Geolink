@@ -33,7 +33,7 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Geolink Login'),
+        title: const Text('Вход в Geolink'),
         centerTitle: true,
       ),
       body: Padding(
@@ -47,7 +47,7 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                 children: [
                   const SizedBox(height: 40),
                   const Text(
-                    'Enter your email',
+                    'Введите вашу почту',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -56,7 +56,7 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'We\'ll send you a code to verify your identity',
+                    'Мы отправим вам код для подтверждения вашей личности',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
@@ -73,7 +73,7 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                         border: Border.all(color: Colors.red),
                       ),
                       child: Text(
-                        authProvider.errorMessage ?? 'An error occurred',
+                        authProvider.errorMessage ?? 'Ошибка',
                         style: const TextStyle(color: Colors.red),
                       ),
                     ),
@@ -84,8 +84,8 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                     keyboardType: TextInputType.emailAddress,
                     enabled: !authProvider.isLoading,
                     decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'your@email.com',
+                      labelText: 'Почта',
+                      hintText: 'ваша@почта.com',
                       prefixIcon: const Icon(Icons.email),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -101,7 +101,7 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                             if (email.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please enter your email'),
+                                  content: Text('Пожалуйста, введите вашу почту'),
                                 ),
                               );
                               return;
@@ -124,11 +124,11 @@ class _SendCodeScreenState extends State<SendCodeScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('Send Code'),
+                        : const Text('Отправить код'),
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Mock Mode: Email will be accepted as is',
+                    'Режим тестирования: почта будет принята как есть',
                     style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,

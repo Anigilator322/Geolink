@@ -49,11 +49,11 @@ class AuthService {
 
   AuthService({this.apiClient});
 
-  /// Step 1: Send OTP code to email
-  /// Mock mode: Uses static mock data
+  /// Шаг 1: Отправить код OTP на почту
+  /// Режим тестирования: использует статические данные
   Future<bool> sendCode(String email) async {
     try {
-      // If API client is provided, use real API
+      // Если клиент API предоставлен, использовать реальный API
       if (apiClient != null) {
         final response = await apiClient!.post(
           '/api/auth/send-code',
@@ -62,7 +62,7 @@ class AuthService {
         return response.statusCode == 200;
       }
 
-      // Mock implementation
+      // Реализация для тестирования
       await Future.delayed(const Duration(seconds: 1));
       return true;
     } catch (e) {
@@ -70,11 +70,11 @@ class AuthService {
     }
   }
 
-  /// Step 2: Verify OTP code and get auth tokens
-  /// Mock mode: Accepts any 6-digit code
+  /// Шаг 2: Проверить код OTP и получить токены аутентификации
+  /// Режим тестирования: принимает любой 6-значный код
   Future<AuthResponse> verifyCode(String email, String code) async {
     try {
-      // If API client is provided, use real API
+      // Если клиент API предоставлен, использовать реальный API
       if (apiClient != null) {
         final response = await apiClient!.post(
           '/api/auth/verify-code',
@@ -88,14 +88,14 @@ class AuthService {
         return AuthResponse.fromJson(jsonDecode(response.body));
       }
 
-      // Mock implementation
+      // Реализация для тестирования
       if (code.isEmpty || code.length != 6) {
         throw Exception('Invalid code format');
       }
 
       await Future.delayed(const Duration(seconds: 1));
 
-      // Return mock auth response
+      // Вернуть ответ авторизации для тестирования
       return AuthResponse(
         userId: 'mock-user-${email.hashCode}',
         email: email,
@@ -109,11 +109,11 @@ class AuthService {
     }
   }
 
-  /// Refresh access token
-  /// Mock mode: Returns new tokens
+  /// Обновить токен доступа
+  /// Режим тестирования: возвращает новые токены
   Future<AuthResponse> refreshToken(String refreshToken) async {
     try {
-      // If API client is provided, use real API
+      // Если клиент API предоставлен, использовать реальный API
       if (apiClient != null) {
         final response = await apiClient!.post(
           '/api/auth/refresh',
@@ -127,7 +127,7 @@ class AuthService {
         return AuthResponse.fromJson(jsonDecode(response.body));
       }
 
-      // Mock implementation
+      // Реализация для тестирования
       await Future.delayed(const Duration(seconds: 1));
 
       return AuthResponse(
