@@ -1,5 +1,7 @@
 using Geolink.Application.Common;
 using Geolink.Application.DTOs.Auth;
+using Geolink.Application.Interfaces;
+using Geolink.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,8 @@ namespace Geolink.Infrastructure.Services;
 public class AuthService : IAuthService
 {
     private readonly UserManager<User> _userManager;
+    private readonly IEmailOtpService _otpService;
+    private readonly ITokenService _tokenService;
     private readonly IUserRepository _userRepository;
 
     public AuthService(
@@ -89,3 +93,38 @@ public class AuthService : IAuthService
         return Result<AuthResponse>.Success(response);
     }
 
+    public async Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Result<AuthResponse>.Failure("Refresh token is required");
+
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken), cancellationToken);
+
+        if (user == null)
+            return Result<AuthResponse>.Failure("Invalid refresh token");
+
+        var tokenRecord = user.RefreshTokens.FirstOrDefault(rt => rt.Token == refreshToken);
+        if (tokenRecord == null || tokenRecord.ExpiresAt < DateTime.UtcNow)
+            return Result<AuthResponse>.Failure("Refresh token expired");
+
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+        user.RefreshTokens.Remove(tokenRecord);
+        user.RefreshTokens.Add(newRefreshToken);
+        newRefreshToken.UserId = user.Id;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        var response = new AuthResponse(
+            UserId: user.Id,
+            Email: user.Email ?? "",
+            Username: user.UserName ?? "",
+            AccessToken: newAccessToken,
+            RefreshToken: newRefreshToken.Token,
+            ExpiresAt: newRefreshToken.ExpiresAt
+        );
+
+        return Result<AuthResponse>.Success(response);
+    }
+}
