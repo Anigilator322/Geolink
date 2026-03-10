@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../../../data/models/friend.dart';
-import '../../../data/models/location.dart';
 import 'map_state.dart';
 
 class MapViewModel extends ChangeNotifier {
