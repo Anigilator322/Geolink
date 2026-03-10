@@ -21,7 +21,7 @@ public class AuthController : ControllerBase
         var result = await _authService.SendCodeAsync(request.Email, cancellationToken);
         
         if (!result.IsSuccess)
-            return BadRequest(new { message = result.ErrorMessage });
+            return BadRequest(new { message = result.Error });
 
         return Ok(new { message = "Code sent to email" });
     }
@@ -35,9 +35,9 @@ public class AuthController : ControllerBase
         var result = await _authService.VerifyCodeAsync(request.Email, request.Code, cancellationToken);
         
         if (!result.IsSuccess)
-            return BadRequest(new { message = result.ErrorMessage });
+            return BadRequest(new { message = result.Error });
 
-        return Ok(result.Data);
+        return Ok(result.Value);
     }
 
     [HttpPost("refresh")]
