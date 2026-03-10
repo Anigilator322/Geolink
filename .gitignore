@@ -509,3 +509,10 @@ app.*.symbols
 !**/Flutter/googlemaps-sdk.zip
 /docs
 /Geolink.Mobile/docs
+
+# Local secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/secrets.json
