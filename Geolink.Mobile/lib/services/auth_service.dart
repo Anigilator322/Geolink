@@ -1,3 +1,13 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/auth_response.dart';
+
+class ApiClient {
+  final String baseUrl;
+  final http.Client httpClient;
+
+  ApiClient({
+    required this.baseUrl,
     http.Client? httpClient,
   }) : httpClient = httpClient ?? http.Client();
 
@@ -33,6 +43,32 @@
     );
   }
 }
+
+class AuthService {
+  final ApiClient? apiClient;
+
+  AuthService({this.apiClient});
+
+  /// Step 1: Send OTP code to email
+  /// Mock mode: Uses static mock data
+  Future<bool> sendCode(String email) async {
+    try {
+      // If API client is provided, use real API
+      if (apiClient != null) {
+        final response = await apiClient!.post(
+          '/api/auth/send-code',
+          body: {'email': email},
+        );
+        return response.statusCode == 200;
+      }
+
+      // Mock implementation
+      await Future.delayed(const Duration(seconds: 1));
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   /// Step 2: Verify OTP code and get auth tokens
   /// Mock mode: Accepts any 6-digit code
