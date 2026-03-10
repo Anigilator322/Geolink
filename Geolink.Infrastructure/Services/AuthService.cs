@@ -29,7 +29,7 @@ public class AuthService : IAuthService
     public async Task<Result<bool>> SendCodeAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return Result<bool>.Failure("Email is required");
+            return Result<bool>.Failure("Электронная почта требуется");
 
         var user = await _unitOfWork.Users.GetByEmailAsync(email, cancellationToken);
         
@@ -46,7 +46,7 @@ public class AuthService : IAuthService
 
             var result = await _userManager.CreateAsync(user);
             if (!result.Succeeded)
-                return Result<bool>.Failure($"Failed to create user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                return Result<bool>.Failure($"Ошибка при создании пользователя: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
 
         await _otpService.SendOtpAsync(email, cancellationToken);
@@ -57,15 +57,15 @@ public class AuthService : IAuthService
     public async Task<Result<AuthResponse>> VerifyCodeAsync(string email, string code, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(code))
-            return Result<AuthResponse>.Failure("Email and code are required");
+            return Result<AuthResponse>.Failure("Требуются электронная почта и код");
 
         var isValid = await _otpService.VerifyOtpAsync(email, code, cancellationToken);
         if (!isValid)
-            return Result<AuthResponse>.Failure("Invalid or expired code");
+            return Result<AuthResponse>.Failure("Неверный или истекший код");
 
         var user = await _unitOfWork.Users.GetByEmailAsync(email, cancellationToken);
         if (user == null)
-            return Result<AuthResponse>.Failure("User not found");
+            return Result<AuthResponse>.Failure("Пользователь не найден");
 
         if (!user.EmailConfirmed)
         {
@@ -96,17 +96,17 @@ public class AuthService : IAuthService
     public async Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return Result<AuthResponse>.Failure("Refresh token is required");
+            return Result<AuthResponse>.Failure("Требуется токен обновления");
 
         var user = await _userManager.Users
             .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken), cancellationToken);
 
         if (user == null)
-            return Result<AuthResponse>.Failure("Invalid refresh token");
+            return Result<AuthResponse>.Failure("Неверный токен обновления");
 
         var tokenRecord = user.RefreshTokens.FirstOrDefault(rt => rt.Token == refreshToken);
         if (tokenRecord == null || tokenRecord.ExpiresAt < DateTime.UtcNow)
-            return Result<AuthResponse>.Failure("Refresh token expired");
+            return Result<AuthResponse>.Failure("Токен обновления истек");
 
         var newAccessToken = _tokenService.GenerateAccessToken(user);
         var newRefreshToken = _tokenService.GenerateRefreshToken();

@@ -23,11 +23,11 @@ public class AuthController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(new { message = result.Error });
 
-        return Ok(new { message = "Code sent to email" });
+        return Ok(new { message = "Код отправлен на почту" });
     }
 
     /// <summary>
-    /// Step 2: Verify OTP code and receive authentication tokens.
+    /// Шаг 2: Проверить код OTP и получить токены аутентификации.
     /// </summary>
     [HttpPost("verify-code")]
     public async Task<IActionResult> VerifyCode([FromBody] VerifyCodeRequest request, CancellationToken cancellationToken)

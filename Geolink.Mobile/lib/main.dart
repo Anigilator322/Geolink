@@ -10,11 +10,11 @@ import 'services/secure_storage_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize services
+  // Инициализировать сервисы
   final storageService = SecureStorageService();
   final authService = AuthService(
     apiClient: null,
-    // Uncomment and set baseUrl to use real API:
+    // Раскомментируйте и установите baseUrl для использования реального API:
     // apiClient: ApiClient(baseUrl: 'http://localhost:5000'),
   );
 
@@ -84,12 +84,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        // If authenticated, show home screen
+        // Если аутентифицирован, показать главный экран
         if (authProvider.isAuthenticated) {
           return const HomeScreen();
         }
 
-        // If not authenticated, show login flow
+        // Если не аутентифицирован, показать процесс входа
         if (_showVerifyCode) {
           return VerifyCodeScreen(
             onVerified: () {

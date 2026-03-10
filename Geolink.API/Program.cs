@@ -19,17 +19,17 @@ namespace Geolink.API
             {
                 if (string.IsNullOrWhiteSpace(defaultConnection))
                 {
-                    throw new InvalidOperationException("Missing ConnectionStrings:DefaultConnection. Configure it via user-secrets or environment variables.");
+                    throw new InvalidOperationException("Отсутствует ConnectionStrings:DefaultConnection. Настройте его через user-secrets или переменные окружения.");
                 }
 
                 if (string.IsNullOrWhiteSpace(jwtKey))
                 {
-                    throw new InvalidOperationException("Missing Jwt:Key. Configure it via user-secrets or environment variables.");
+                    throw new InvalidOperationException("Отсутствует Jwt:Key. Настройте его через user-secrets или переменные окружения.");
                 }
 
                 if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
                 {
-                    throw new InvalidOperationException("Jwt:Key must be at least 32 bytes.");
+                    throw new InvalidOperationException("Jwt:Key должен быть не меньше 32 байт.");
                 }
             }
 
