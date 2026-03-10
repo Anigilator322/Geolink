@@ -1,12 +1,12 @@
 namespace Geolink.Application.DTOs.Auth;
 
-/// <summary>Шаг 1 входа — запрос OTP на данный электронный адрес.</summary>
+/// <summary>Step 1 of login — request an OTP to the given email.</summary>
 public record SendCodeRequest(string Email);
 
-/// <summary>Шаг 2 входа — проверить OTP, полученный на электронный адрес.</summary>
+/// <summary>Step 2 of login — verify the OTP received by email.</summary>
 public record VerifyCodeRequest(string Email, string Code);
 
-/// <summary>Выдана когда OTP действителен. Содержит пару JWT.</summary>
+/// <summary>Issued when the OTP is valid. Contains the JWT pair.</summary>
 public record AuthResponse(
     Guid UserId,
     string Email,

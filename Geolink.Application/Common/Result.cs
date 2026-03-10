@@ -17,9 +17,9 @@ public class Result<T>
 
     public static Result<T> Success(T value) => new(true, value, null, null);
     public static Result<T> Failure(string error, int statusCode = 400) => new(false, default, error, statusCode);
-    public static Result<T> NotFound(string error = "Ресурс не найден") => new(false, default, error, 404);
-    public static Result<T> Unauthorized(string error = "Не авторизован") => new(false, default, error, 401);
-    public static Result<T> Forbidden(string error = "Запрещено") => new(false, default, error, 403);
+    public static Result<T> NotFound(string error = "Resource not found") => new(false, default, error, 404);
+    public static Result<T> Unauthorized(string error = "Unauthorized") => new(false, default, error, 401);
+    public static Result<T> Forbidden(string error = "Forbidden") => new(false, default, error, 403);
 }
 
 public class Result
@@ -37,7 +37,7 @@ public class Result
 
     public static Result Success() => new(true, null, null);
     public static Result Failure(string error, int statusCode = 400) => new(false, error, statusCode);
-    public static Result NotFound(string error = "Ресурс не найден") => new(false, error, 404);
-    public static Result Unauthorized(string error = "Не авторизован") => new(false, error, 401);
-    public static Result Forbidden(string error = "Запрещено") => new(false, error, 403);
+    public static Result NotFound(string error = "Resource not found") => new(false, error, 404);
+    public static Result Unauthorized(string error = "Unauthorized") => new(false, error, 401);
+    public static Result Forbidden(string error = "Forbidden") => new(false, error, 403);
 }
