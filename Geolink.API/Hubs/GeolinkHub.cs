@@ -80,10 +80,6 @@ public class GeolinkHub : Hub
         {
             location.Latitude = request.Latitude;
             location.Longitude = request.Longitude;
-            location.Accuracy = request.Accuracy;
-            location.Altitude = request.Altitude;
-            location.Speed = request.Speed;
-            location.Heading = request.Heading;
             location.UpdatedAt = DateTime.UtcNow;
         }
         else
@@ -92,11 +88,7 @@ public class GeolinkHub : Hub
             {
                 UserId = userId.Value,
                 Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                Accuracy = request.Accuracy,
-                Altitude = request.Altitude,
-                Speed = request.Speed,
-                Heading = request.Heading
+                Longitude = request.Longitude
             });
         }
         
@@ -111,13 +103,11 @@ public class GeolinkHub : Hub
             var friendId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
             if (_userConnections.TryGetValue(friendId, out var connectionId))
             {
-                await Clients.Client(connectionId).SendAsync("FriendLocationUpdated", new LocationDto(
+                await Clients.Client(connectionId).SendAsync("FriendLocationUpdated", new FriendLocationDto(
                     userId.Value,
                     user?.UserName ?? "",
-                    user?.AvatarUrl,
                     request.Latitude,
                     request.Longitude,
-                    request.Accuracy,
                     DateTime.UtcNow
                 ));
             }

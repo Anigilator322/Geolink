@@ -22,8 +22,6 @@ public static class DependencyInjection
         services.AddIdentityCore<User>(options =>
             {
                 options.User.RequireUniqueEmail = true;
-                // При работе только с OTP требования к паролю не актуальны,
-                // но установим минимальные значения на случай когда-нибудь вызовется UserManager.AddPasswordAsync
                 options.Password.RequireDigit = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
@@ -41,7 +39,7 @@ public static class DependencyInjection
             services.AddScoped<ILocationCacheService, LocationCacheService>();
         }
 
-        // Репозитории и Единица работы
+        // Репозитории и Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Сервисы
@@ -49,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailOtpService, EmailOtpService>();
         services.AddScoped<IEmailSender, ConsoleEmailSender>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IFriendsMapService, FriendsMapService>();
 
         return services;
     }
