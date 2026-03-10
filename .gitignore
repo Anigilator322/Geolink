@@ -508,10 +508,4 @@ app.*.symbols
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !**/Flutter/googlemaps-sdk.zip
 /docs
-
-# Local secrets
-.env
-.env.*
-!.env.example
-**/appsettings.Local.json
-**/secrets.json
+/Geolink.Mobile/docs
