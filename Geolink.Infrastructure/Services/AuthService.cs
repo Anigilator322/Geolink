@@ -12,18 +12,18 @@ public class AuthService : IAuthService
     private readonly UserManager<User> _userManager;
     private readonly IEmailOtpService _otpService;
     private readonly ITokenService _tokenService;
-    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthService(
         UserManager<User> userManager,
         IEmailOtpService otpService,
         ITokenService tokenService,
-        IUserRepository userRepository)
+        IUnitOfWork unitOfWork)
     {
         _userManager = userManager;
         _otpService = otpService;
         _tokenService = tokenService;
-        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<bool>> SendCodeAsync(string email, CancellationToken cancellationToken = default)
@@ -63,7 +63,7 @@ public class AuthService : IAuthService
         if (!isValid)
             return Result<AuthResponse>.Failure("Invalid or expired code");
 
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        var user = await _unitOfWork.Users.GetByEmailAsync(email, cancellationToken);
         if (user == null)
             return Result<AuthResponse>.Failure("User not found");
 
@@ -71,7 +71,7 @@ public class AuthService : IAuthService
         {
             user.EmailConfirmed = true;
             user.Approved = true;
-            await _userRepository.UpdateAsync(user, cancellationToken);
+            await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
         }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
