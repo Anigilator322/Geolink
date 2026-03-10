@@ -1,90 +1,35 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/widgets/base_sheet.dart';
+import '../../view_models/events/events_view_model.dart';
 
-class EventsSheet extends StatefulWidget {
+class EventsSheet extends StatelessWidget {
   final VoidCallback onClose;
-  const EventsSheet({super.key, required this.onClose});
+  final EventsViewModel viewModel;
+  final void Function(EventItem event) onEventTap;
 
-  @override
-  State<EventsSheet> createState() => _EventsSheetState();
-}
-
-class _EventsSheetState extends State<EventsSheet> {
-  bool _isAddingEvent = false; 
-  bool _isPublic = true; 
+  const EventsSheet({
+    super.key,
+    required this.onClose,
+    required this.viewModel,
+    required this.onEventTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (_isAddingEvent)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => setState(() => _isAddingEvent = false),
-                    ),
-                  ),
-                Text(
-                  _isAddingEvent ? 'Новое мероприятие' : 'Список мероприятий',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.black, size: 24),
-                    onPressed: widget.onClose,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _isAddingEvent ? _buildAddEventForm() : _buildEventsList(),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
-            child: Center(
-              child: SizedBox(
-                width: 250,
-                height: 45,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      if (_isAddingEvent) {
-                        _isAddingEvent = false; 
-                      } else {
-                        _isAddingEvent = true; 
-                      }
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                  child: Text(
-                    _isAddingEvent ? 'Сохранить' : 'Добавить мероприятие',
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) => BaseSheet(
+        title: viewModel.isAddingEvent ? 'Новое мероприятие' : 'Список мероприятий',
+        onClose: onClose,
+        leading: viewModel.isAddingEvent
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: viewModel.cancelAddEvent,
+              )
+            : null,
+        body: viewModel.isAddingEvent ? _buildAddEventForm() : _buildEventsList(),
+        bottomButton: _buildBottomButton(),
       ),
     );
   }
@@ -100,7 +45,7 @@ class _EventsSheetState extends State<EventsSheet> {
             child: const Text(
               'Показать на карте',
               style: TextStyle(
-                color: Color(0xFF2E7D32),
+                color: AppColors.primary,
                 fontSize: 14,
                 decoration: TextDecoration.underline,
               ),
@@ -128,18 +73,32 @@ class _EventsSheetState extends State<EventsSheet> {
           ),
         ),
         Expanded(
-          child: ListView(
+          child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              _buildEventItem('Выступление группы', '20:00', '18.02.2026'),
-              _buildEventItem('Мастер-класс по Flutter', '12:00', '20.02.2026'),
-              _buildEventItem('Встреча сообщества', '18:30', '22.02.2026'),
-            ],
+            itemCount: viewModel.events.length,
+            itemBuilder: (context, index) {
+              final event = viewModel.events[index];
+              return Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(event.name),
+                    subtitle: Text('${event.date}  ${event.time}'),
+                    onTap: () {
+                      onClose();
+                      onEventTap(event);
+                    },
+                  ),
+                  const Divider(height: 1, thickness: 0.5),
+                ],
+              );
+            },
           ),
         ),
       ],
     );
   }
+
   Widget _buildAddEventForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -156,7 +115,10 @@ class _EventsSheetState extends State<EventsSheet> {
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'Указать на карте',
-                style: TextStyle(color: Color(0xFF2E7D32), decoration: TextDecoration.underline),
+                style: TextStyle(
+                  color: AppColors.primary,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ),
@@ -181,7 +143,7 @@ class _EventsSheetState extends State<EventsSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Начало', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    const Text('Начало', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     _buildTextField('20:00'),
                   ],
@@ -207,9 +169,17 @@ class _EventsSheetState extends State<EventsSheet> {
           const Text('Статус:', style: TextStyle(fontWeight: FontWeight.bold)),
           Row(
             children: [
-              _buildCheckbox('Частное', !_isPublic),
+              _StatusCheckbox(
+                label: 'Частное',
+                value: !viewModel.isPublic,
+                onChanged: (_) => viewModel.setPublic(false),
+              ),
               const SizedBox(width: 20),
-              _buildCheckbox('Публичное', _isPublic),
+              _StatusCheckbox(
+                label: 'Публичное',
+                value: viewModel.isPublic,
+                onChanged: (_) => viewModel.setPublic(true),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -229,7 +199,6 @@ class _EventsSheetState extends State<EventsSheet> {
     );
   }
 
-
   Widget _buildTextField(String hint) {
     return TextFormField(
       decoration: InputDecoration(
@@ -240,36 +209,44 @@ class _EventsSheetState extends State<EventsSheet> {
     );
   }
 
-  Widget _buildCheckbox(String label, bool value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Checkbox(
-          value: value,
-          activeColor: const Color(0xFF2E7D32),
-          onChanged: (v) => setState(() => _isPublic = (label == 'Публичное')),
+  Widget _buildBottomButton() {
+    return SizedBox(
+      width: 250,
+      height: 45,
+      child: ElevatedButton(
+        onPressed: viewModel.isAddingEvent ? viewModel.saveEvent : viewModel.showAddEvent,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
-        Text(label),
-      ],
-    );
-  }
-
-  Widget _buildEventItem(String name, String time, String date) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          child: Row(
-            children: [
-              Expanded(child: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
-              SizedBox(width: 80, child: Text(time, style: const TextStyle(fontSize: 14), textAlign: TextAlign.center)),
-              SizedBox(width: 80, child: Text(date, style: const TextStyle(fontSize: 14), textAlign: TextAlign.right)),
-            ],
-          ),
+        child: Text(
+          viewModel.isAddingEvent ? 'Сохранить' : 'Добавить мероприятие',
+          style: const TextStyle(color: Colors.white, fontSize: 14),
         ),
-        const Divider(height: 1, thickness: 0.5, color: Colors.black45),
-      ],
+      ),
     );
   }
 }
 
+class _StatusCheckbox extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+
+  const _StatusCheckbox({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(value: value, activeColor: AppColors.primary, onChanged: onChanged),
+        Text(label),
+      ],
+    );
+  }
+}

@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  permission_handler: ^11.3.0
   yandex_maps_mapkit:
     version: ^4.30.0-beta
   flutter:

@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:async';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,22 +9,19 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  
-  late AnimationController _controller;
-  late Animation<double> _fadeAnim;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(
-      vsync: this, 
+      vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-
     _controller.forward();
 
     Timer(const Duration(seconds: 2), () {
@@ -41,16 +38,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255), 
+      backgroundColor: Colors.white,
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: SvgPicture.asset(
-              'assets/logo.svg',
-              width: 220,
-            ),
+            child: SvgPicture.asset('assets/logo.svg', width: 220),
           ),
         ),
       ),
