@@ -31,7 +31,7 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(email))
             return Result<bool>.Failure("Email is required");
 
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        var user = await _unitOfWork.Users.GetByEmailAsync(email, cancellationToken);
         
         if (user == null)
         {
@@ -79,7 +79,7 @@ public class AuthService : IAuthService
 
         user.RefreshTokens.Add(refreshToken);
         refreshToken.UserId = user.Id;
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
 
         var response = new AuthResponse(
             UserId: user.Id,
@@ -114,7 +114,7 @@ public class AuthService : IAuthService
         user.RefreshTokens.Remove(tokenRecord);
         user.RefreshTokens.Add(newRefreshToken);
         newRefreshToken.UserId = user.Id;
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
 
         var response = new AuthResponse(
             UserId: user.Id,
