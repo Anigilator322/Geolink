@@ -46,8 +46,8 @@ public class AuthController : ControllerBase
         var result = await _authService.RefreshTokenAsync(request.RefreshToken, cancellationToken);
         
         if (!result.IsSuccess)
-            return BadRequest(new { message = result.ErrorMessage });
+            return BadRequest(new { message = result.Error });
 
-        return Ok(result.Data);
+        return Ok(result.Value);
     }
 }
