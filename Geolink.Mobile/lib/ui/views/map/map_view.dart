@@ -269,6 +269,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
         _renderEventPlacemarks();
         _eventsViewModel.addListener(_renderEventPlacemarks);
         _mapViewModel.addListener(_updateFriendPlacemarks);
+        _updateFriendPlacemarks();
       },
     );
   }
