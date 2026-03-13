@@ -1,9 +1,30 @@
+using Geolink.Application.DTOs.Location;
+
 namespace Geolink.Application.Interfaces;
 
 public interface ILocationCacheService
 {
-    Task SetLocationAsync(Guid userId, double latitude, double longitude, TimeSpan? expiry = null);
-    Task<(double Latitude, double Longitude)?> GetLocationAsync(Guid userId);
-    Task<Dictionary<Guid, (double Latitude, double Longitude)>> GetLocationsAsync(IEnumerable<Guid> userIds);
-    Task RemoveLocationAsync(Guid userId);
+    /// <summary>
+    /// Сохранить текущую геолокацию пользователя в Redis
+    /// </summary>
+    Task SetLocationAsync(
+        Guid userId, 
+        double latitude, 
+        double longitude, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Получить геолокацию пользователя из Redis.
+    /// Возвращает null если локация не найдена.
+    /// </summary>
+    Task<LocationCacheDto?> GetLocationAsync(
+        Guid userId, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Получить геолокации нескольких пользователей из Redis
+    /// </summary>
+    Task<IEnumerable<LocationCacheDto>> GetLocationsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

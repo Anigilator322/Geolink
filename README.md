@@ -9,6 +9,27 @@
 - Просмотр друзей на карте
 - Создание мероприятий на карте
 
+## ДЛЯ ПРОВЕРКИ
+Сценарий - Просмотр друзей на карте
+Только клиент, бек в разработке.
+```bash
+cd Geolink.Mobile
+flutter pub get
+```
+Далее - если тестирование на эмуляторе
+```bash
+flutter emulators
+flutter emulators --launch <Device_Id>
+flutter run
+```
+Если на телефоне
+```bash
+flutter build apk
+```
+После чего apk с приложением будет доступно для установки. 
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
 ## Структура проекта
 
 | Папка | Описание |
@@ -91,16 +112,6 @@ cd Geolink.Mobile
 flutter pub get
 flutter run
 ```
-
-## API Endpoints
-
-| Модуль | Endpoints |
-|--------|-----------|
-| **Auth** | `POST /api/auth/register`, `/login`, `/refresh` |
-| **Users** | `GET /api/users/me`, `PUT /api/users/me`, `GET /api/users/search` |
-| **Friends** | `GET /api/friends`, `POST /api/friends/request`, `PUT /api/friends/{id}` |
-| **Location** | `PUT /api/location`, SignalR Hub: `/hubs/geolink` |
-| **Events** | `GET /api/events`, `POST /api/events`, `GET /api/events/nearby` |
 
 ## Local Secrets Setup
 

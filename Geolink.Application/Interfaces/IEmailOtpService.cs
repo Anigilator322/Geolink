@@ -2,9 +2,9 @@ namespace Geolink.Application.Interfaces;
 
 public interface IEmailOtpService
 {
-    /// <summary>Generates a 6-digit OTP, caches it, and sends it to the given email.</summary>
+    /// <summary>Генерирует 6-значный OTP, кэширует его и отправляет на данный электронный адрес.</summary>
     Task SendOtpAsync(string email, CancellationToken cancellationToken = default);
 
-    /// <summary>Validates the code. Returns true and removes the code on success.</summary>
+    /// <summary>Проверяет код. Возвращает true и удаляет код при успехе.</summary>
     Task<bool> VerifyOtpAsync(string email, string code, CancellationToken cancellationToken = default);
 }

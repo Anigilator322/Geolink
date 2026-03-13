@@ -1,3 +1,5 @@
+using System.Globalization;
+using Geolink.Application.DTOs.Location;
 using Geolink.Application.Interfaces;
 using StackExchange.Redis;
 
@@ -15,14 +17,21 @@ public class LocationCacheService : ILocationCacheService
         _db = redis.GetDatabase();
     }
 
-    public async Task SetLocationAsync(Guid userId, double latitude, double longitude, TimeSpan? expiry = null)
+    public async Task SetLocationAsync(
+        Guid userId, 
+        double latitude, 
+        double longitude, 
+        CancellationToken cancellationToken = default)
     {
         var key = $"{KeyPrefix}{userId}";
-        var value = $"{latitude},{longitude},{DateTime.UtcNow:O}";
-        await _db.StringSetAsync(key, value, expiry ?? TimeSpan.FromMinutes(5));
+        var updatedAtUtc = DateTime.UtcNow;
+        var value = $"{latitude.ToString(CultureInfo.InvariantCulture)},{longitude.ToString(CultureInfo.InvariantCulture)},{updatedAtUtc.Ticks}";
+        await _db.StringSetAsync(key, value, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<(double Latitude, double Longitude)?> GetLocationAsync(Guid userId)
+    public async Task<LocationCacheDto?> GetLocationAsync(
+        Guid userId, 
+        CancellationToken cancellationToken = default)
     {
         var key = $"{KeyPrefix}{userId}";
         var value = await _db.StringGetAsync(key);
@@ -31,15 +40,25 @@ public class LocationCacheService : ILocationCacheService
             return null;
 
         var parts = value.ToString().Split(',');
-        if (parts.Length < 2)
+        if (parts.Length < 3 || 
+            !double.TryParse(parts[0], CultureInfo.InvariantCulture, out var latitude) || 
+            !double.TryParse(parts[1], CultureInfo.InvariantCulture, out var longitude) ||
+            !long.TryParse(parts[2], CultureInfo.InvariantCulture, out var ticks))
             return null;
 
-        return (double.Parse(parts[0]), double.Parse(parts[1]));
+        return new LocationCacheDto(
+            userId,
+            latitude,
+            longitude,
+            new DateTime(ticks, DateTimeKind.Utc)
+        );
     }
 
-    public async Task<Dictionary<Guid, (double Latitude, double Longitude)>> GetLocationsAsync(IEnumerable<Guid> userIds)
+    public async Task<IEnumerable<LocationCacheDto>> GetLocationsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default)
     {
-        var result = new Dictionary<Guid, (double Latitude, double Longitude)>();
+        var result = new List<LocationCacheDto>();
         var keys = userIds.Select(id => (RedisKey)$"{KeyPrefix}{id}").ToArray();
         
         var values = await _db.StringGetAsync(keys);
@@ -50,19 +69,21 @@ public class LocationCacheService : ILocationCacheService
             if (!values[i].IsNullOrEmpty)
             {
                 var parts = values[i].ToString().Split(',');
-                if (parts.Length >= 2)
+                if (parts.Length >= 3 && 
+                    double.TryParse(parts[0], CultureInfo.InvariantCulture, out var latitude) && 
+                    double.TryParse(parts[1], CultureInfo.InvariantCulture, out var longitude) &&
+                    long.TryParse(parts[2], CultureInfo.InvariantCulture, out var ticks))
                 {
-                    result[userIdList[i]] = (double.Parse(parts[0]), double.Parse(parts[1]));
+                    result.Add(new LocationCacheDto(
+                        userIdList[i],
+                        latitude,
+                        longitude,
+                        new DateTime(ticks, DateTimeKind.Utc)
+                    ));
                 }
             }
         }
 
         return result;
-    }
-
-    public async Task RemoveLocationAsync(Guid userId)
-    {
-        var key = $"{KeyPrefix}{userId}";
-        await _db.KeyDeleteAsync(key);
     }
 }

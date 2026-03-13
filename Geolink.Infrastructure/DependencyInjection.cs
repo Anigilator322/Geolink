@@ -14,16 +14,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // Database
+        // База данных
         services.AddDbContext<GeolinkDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
-        // ASP.NET Core Identity (no roles, passwordless flow)
+        // ASP.NET Core Identity (без ролей, беспарольный поток)
         services.AddIdentityCore<User>(options =>
             {
                 options.User.RequireUniqueEmail = true;
-                // Password requirements are irrelevant (OTP-only login),
-                // but set minimums in case UserManager.AddPasswordAsync is ever called
                 options.Password.RequireDigit = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
@@ -41,13 +39,15 @@ public static class DependencyInjection
             services.AddScoped<ILocationCacheService, LocationCacheService>();
         }
 
-        // Repositories & UoW
+        // Репозитории и Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Services
+        // Сервисы
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailOtpService, EmailOtpService>();
         services.AddScoped<IEmailSender, ConsoleEmailSender>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IFriendsMapService, FriendsMapService>();
 
         return services;
     }
