@@ -2,6 +2,7 @@ using System.Text;
 using Geolink.API.Hubs;
 using Geolink.Application;
 using Geolink.Infrastructure;
+using Geolink.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -95,7 +96,10 @@ namespace Geolink.API
                           .AllowAnyHeader();
                 });
             });
-
+            // Yandex Cloud
+            builder.Services.Configure<YandexCloudPostboxOptions>(
+                builder.Configuration.GetSection("YandexCloudPostbox"));
+                
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

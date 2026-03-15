@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using Geolink.Infrastructure.Options;
 
 namespace Geolink.Infrastructure;
 
@@ -45,10 +46,27 @@ public static class DependencyInjection
         // Сервисы
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailOtpService, EmailOtpService>();
-        services.AddScoped<IEmailSender, ConsoleEmailSender>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFriendsMapService, FriendsMapService>();
+        
+        // Конфигурация YandexCloudPostbox
+        services.Configure<YandexCloudPostboxOptions>(
+            configuration.GetSection(YandexCloudPostboxOptions.SectionName));
+        
+        // Yandex Cloud email sender
+        services.AddHttpClient<YandexCloudEmailSender>();
 
+        var useYandexPostbox = configuration.GetValue<bool>("YandexCloudPostbox:Enabled");
+
+        if (useYandexPostbox)
+        {
+            services.AddScoped<IEmailSender>(sp =>
+                sp.GetRequiredService<YandexCloudEmailSender>());
+        }
+        else
+        {
+            services.AddScoped<IEmailSender, ConsoleEmailSender>();
+        }
         return services;
     }
 }

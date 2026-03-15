@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Geolink.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/location")]
 [Authorize]
 public class LocationController : ControllerBase
 {

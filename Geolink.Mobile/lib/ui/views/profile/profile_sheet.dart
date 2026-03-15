@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/base_sheet.dart';
 import '../../view_models/profile/profile_view_model.dart';
+import '../../../data/services/secure_storage_service.dart';
 
 class ProfileSheet extends StatefulWidget {
   final VoidCallback onClose;
@@ -201,7 +202,11 @@ class _ProfileSheetState extends State<ProfileSheet> {
     }
 
     return GestureDetector(
-      onTap: widget.onClose,
+      onTap: () async {
+        await SecureStorageService().clear();
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/email', (route) => false);
+      },
       behavior: HitTestBehavior.opaque,
       child: const Text(
         'Выйти из профиля',
