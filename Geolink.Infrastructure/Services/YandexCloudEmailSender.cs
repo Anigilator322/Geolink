@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Geolink.Application.Interfaces;
@@ -23,6 +22,9 @@ public class YandexCloudEmailSender : IEmailSender
         _options = options.Value;
         _logger = logger;
     }
+
+    // AWS-compatible Postbox API:
+    // POST /v2/email/outbound-emails
     // https://yandex.cloud/ru/docs/postbox/aws-compatible-api/api-ref/send-email
     public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
     {
@@ -45,13 +47,15 @@ public class YandexCloudEmailSender : IEmailSender
                 {
                     Subject = new
                     {
-                        Data = subject
+                        Data = subject,
+                        Charset = "UTF-8"
                     },
                     Body = new
                     {
                         Text = new
                         {
-                            Data = body
+                            Data = body,
+                            Charset = "UTF-8"
                         }
                     }
                 }
@@ -74,7 +78,7 @@ public class YandexCloudEmailSender : IEmailSender
         else
         {
             throw new InvalidOperationException(
-                "No authentication configured. Set IamToken now, or later implement SigV4 signing with static access keys.");
+                "YandexCloudPostbox auth is not configured. Set IamToken for the current draft implementation, or later add static access key + AWS SigV4 signing.");
         }
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -87,7 +91,8 @@ public class YandexCloudEmailSender : IEmailSender
                 (int)response.StatusCode,
                 responseBody);
 
-            throw new InvalidOperationException("Failed to send email via Yandex Cloud Postbox.");
+            throw new InvalidOperationException(
+                $"Failed to send email via Yandex Cloud Postbox. Status: {(int)response.StatusCode}");
         }
     }
 }
