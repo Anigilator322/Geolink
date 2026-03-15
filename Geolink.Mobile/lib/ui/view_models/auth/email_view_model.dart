@@ -1,38 +1,70 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../data/services/auth_api_service.dart';
+import '../../../data/services/token_storage.dart';
 
 class EmailViewModel extends ChangeNotifier {
+  final AuthApiService _authApiService;
+  final TokenStorage _tokenStorage;
+
   bool isCodeSent = false;
+  bool isLoading = false;
   int timerSeconds = 57;
+  String? errorMessage;
 
   final emailController = TextEditingController();
   final codeController = TextEditingController();
 
   Timer? _timer;
 
-  EmailViewModel() {
+  EmailViewModel({
+    AuthApiService? authApiService,
+    TokenStorage? tokenStorage,
+  })  : _authApiService = authApiService ?? AuthApiService(),
+        _tokenStorage = tokenStorage ?? TokenStorage() {
     codeController.addListener(_onCodeChanged);
   }
 
-  void sendCode() {
-    isCodeSent = true;
-    timerSeconds = 57;
-    codeController.clear();
-    _startTimer();
+  Future<bool> sendCode() async {
+    final email = emailController.text.trim();
+    errorMessage = null;
+
+    if (email.isEmpty) {
+      errorMessage = 'Введите e-mail';
+      notifyListeners();
+      return false;
+    }
+
+    isLoading = true;
     notifyListeners();
+
+    try {
+      await _authApiService.sendCode(email);
+
+      isCodeSent = true;
+      timerSeconds = 57;
+      codeController.clear();
+      _startTimer();
+
+      return true;
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   void goBack() {
     isCodeSent = false;
+    errorMessage = null;
+    codeController.clear();
     _timer?.cancel();
     notifyListeners();
   }
 
-  void _onCodeChanged() {
-    if (codeController.text.length == 6) {
-      _verifyCode();
-    }
-  }
+  void _onCodeChanged() {}//мб чтобы при вводе всех 6 символов сразу проверять код, но пока не реализовано
 
   void _startTimer() {
     _timer?.cancel();
@@ -46,7 +78,41 @@ class EmailViewModel extends ChangeNotifier {
     });
   }
 
-  void _verifyCode() {}
+  Future<bool> resendCode() async {
+    return sendCode();
+  }
+
+  Future<bool> _verifyCode() async {
+    final email = emailController.text.trim();
+    final code = codeController.text.trim();
+
+    errorMessage = null;
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _authApiService.verifyCode(email, code);
+
+      await _tokenStorage.save(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        email: response.email,
+      );
+
+      return true;
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      codeController.clear();
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyCodeManually() async {
+    return _verifyCode();
+  }
 
   @override
   void dispose() {

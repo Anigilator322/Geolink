@@ -42,7 +42,7 @@ class _EmailViewState extends State<EmailView> {
         leading: _viewModel.isCodeSent
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: _viewModel.goBack,
+                onPressed: _viewModel.isLoading ? null : _viewModel.goBack,
               )
             : null,
       ),
@@ -57,6 +57,13 @@ class _EmailViewState extends State<EmailView> {
             ),
             const SizedBox(height: 70),
             if (!_viewModel.isCodeSent) _buildEmailInput() else _buildCodeInput(),
+            if (_viewModel.errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                _viewModel.errorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 14),
+              ),
+            ],
             const Spacer(),
             _buildBottomSection(),
           ],
@@ -74,6 +81,7 @@ class _EmailViewState extends State<EmailView> {
         TextField(
           controller: _viewModel.emailController,
           keyboardType: TextInputType.emailAddress,
+          enabled: !_viewModel.isLoading,
           decoration: InputDecoration(
             hintText: 'example@email.com',
             focusedBorder: const OutlineInputBorder(
@@ -96,11 +104,12 @@ class _EmailViewState extends State<EmailView> {
           controller: _viewModel.codeController,
           textAlign: TextAlign.center,
           keyboardType: TextInputType.number,
-          maxLength: 4,
+          enabled: !_viewModel.isLoading,
+          maxLength: 6,
           style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            letterSpacing: 20,
+            letterSpacing: 12,
           ),
           decoration: InputDecoration(
             counterText: '',
@@ -110,7 +119,34 @@ class _EmailViewState extends State<EmailView> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
+        if (_viewModel.isLoading)
+          const Center(child: CircularProgressIndicator()),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: _viewModel.isLoading
+                ? null
+                : () async {
+                    final ok = await _viewModel.verifyCodeManually();
+                    if (!mounted) return;
+                    if (ok) {
+                      Navigator.pushReplacementNamed(context, '/map');
+                    }
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: const Text(
+              'Подтвердить код',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
         Center(
           child: _viewModel.timerSeconds > 0
               ? Text(
@@ -119,7 +155,11 @@ class _EmailViewState extends State<EmailView> {
                   style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
                 )
               : GestureDetector(
-                  onTap: _viewModel.sendCode,
+                  onTap: _viewModel.isLoading
+                      ? null
+                      : () async {
+                          await _viewModel.resendCode();
+                        },
                   child: const Text(
                     'Получить код повторно',
                     style: TextStyle(
@@ -164,15 +204,30 @@ class _EmailViewState extends State<EmailView> {
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: _viewModel.sendCode,
+            onPressed: _viewModel.isLoading
+                ? null
+                : () async {
+                    final ok = await _viewModel.sendCode();
+                    if (!mounted) return;
+                    if (!ok) return;
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
-            child: const Text(
-              'Получить код',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
+            child: _viewModel.isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Получить код',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
           ),
         ),
         const SizedBox(height: 40),

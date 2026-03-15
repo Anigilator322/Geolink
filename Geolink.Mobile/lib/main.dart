@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'ui/views/auth/splash_screen.dart';
 import 'ui/views/auth/email_view.dart';
 import 'ui/views/map/map_view.dart';
 import 'package:yandex_maps_mapkit/init.dart' as init;
@@ -25,9 +24,8 @@ class GeoLinkApp extends StatelessWidget {
         primarySwatch: Colors.green,
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      home: const EmailView(),
       routes: {
-        '/': (context) => const SplashScreen(),
         '/email': (context) => const EmailView(),
         '/map': (context) => const MapView(),
       },
