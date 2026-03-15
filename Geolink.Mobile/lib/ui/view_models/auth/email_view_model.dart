@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../data/services/auth_api_service.dart';
-import '../../../data/services/token_storage.dart';
+import '../../../data/services/secure_storage_service.dart';
 
 class EmailViewModel extends ChangeNotifier {
   final AuthApiService _authApiService;
-  final TokenStorage _tokenStorage;
+  final SecureStorageService _tokenStorage;
 
   bool isCodeSent = false;
   bool isLoading = false;
@@ -19,9 +19,9 @@ class EmailViewModel extends ChangeNotifier {
 
   EmailViewModel({
     AuthApiService? authApiService,
-    TokenStorage? tokenStorage,
+    SecureStorageService? tokenStorage,
   })  : _authApiService = authApiService ?? AuthApiService(),
-        _tokenStorage = tokenStorage ?? TokenStorage() {
+        _tokenStorage = tokenStorage ?? SecureStorageService() {
     codeController.addListener(_onCodeChanged);
   }
 

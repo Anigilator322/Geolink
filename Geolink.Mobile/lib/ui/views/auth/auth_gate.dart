@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../data/services/token_storage.dart';
+import '../../../data/services/secure_storage_service.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -16,7 +16,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _checkAuth() async {
-    final token = await TokenStorage().getAccessToken();
+    final token = await SecureStorageService().getAccessToken();
     if (!mounted) return;
 
     if (token != null && token.isNotEmpty) {

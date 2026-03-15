@@ -53,10 +53,11 @@ public static class DependencyInjection
         services.Configure<YandexCloudPostboxOptions>(
             configuration.GetSection(YandexCloudPostboxOptions.SectionName));
         
+        // Yandex Cloud email sender
         services.AddHttpClient<YandexCloudEmailSender>();
-        
+
         var useYandexPostbox = configuration.GetValue<bool>("YandexCloudPostbox:Enabled");
-        
+
         if (useYandexPostbox)
         {
             services.AddScoped<IEmailSender>(sp =>
