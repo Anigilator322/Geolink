@@ -29,7 +29,7 @@ class EmailViewModel extends ChangeNotifier {
   }
 
   void _onCodeChanged() {
-    if (codeController.text.length == 4) {
+    if (codeController.text.length == 6) {
       _verifyCode();
     }
   }
