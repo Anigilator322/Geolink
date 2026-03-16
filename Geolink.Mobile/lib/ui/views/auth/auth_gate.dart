@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../data/services/secure_storage_service.dart';
+import '../../../data/services/local/secure_storage_service.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});

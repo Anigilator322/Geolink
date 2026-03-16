@@ -1,4 +1,5 @@
-using System.Security.Claims;
+using Geolink.API.Common;
+using Geolink.API.Realtime;
 using Geolink.Application.DTOs.Location;
 using Geolink.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -10,149 +11,197 @@ namespace Geolink.API.Hubs;
 public class GeolinkHub : Hub
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILocationCacheService? _locationCache;
-    private static readonly Dictionary<Guid, string> _userConnections = new();
+    private readonly IUserConnectionRegistry _connectionRegistry;
+    private readonly IHubActionAuthorizationService _hubAuthorization;
+    private readonly IUpdateUserLocationUseCase _updateUserLocation;
+    private readonly IFriendLocationBroadcastService _friendLocationBroadcast;
+    private readonly ILogger<GeolinkHub> _logger;
 
-    public GeolinkHub(IUnitOfWork unitOfWork, ILocationCacheService? locationCache = null)
+    public GeolinkHub(
+        IUnitOfWork unitOfWork,
+        IUserConnectionRegistry connectionRegistry,
+        IHubActionAuthorizationService hubAuthorization,
+        IUpdateUserLocationUseCase updateUserLocation,
+        IFriendLocationBroadcastService friendLocationBroadcast,
+        ILogger<GeolinkHub> logger)
     {
         _unitOfWork = unitOfWork;
-        _locationCache = locationCache;
+        _connectionRegistry = connectionRegistry;
+        _hubAuthorization = hubAuthorization;
+        _updateUserLocation = updateUserLocation;
+        _friendLocationBroadcast = friendLocationBroadcast;
+        _logger = logger;
     }
 
     public override async Task OnConnectedAsync()
     {
-        var userId = GetUserId();
-        if (userId.HasValue)
+        if (!Context.User.TryGetUserId(out var userId))
         {
-            _userConnections[userId.Value] = Context.ConnectionId;
-            
-            // Notify friends that user is online
-            var friends = await _unitOfWork.Friendships.GetUserFriendsAsync(userId.Value);
-            foreach (var friendship in friends)
-            {
-                var friendId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
-                if (_userConnections.TryGetValue(friendId, out var connectionId))
-                {
-                    await Clients.Client(connectionId).SendAsync("FriendOnline", userId.Value);
-                }
-            }
+            _logger.LogWarning("Connection {ConnectionId} has no valid user claim.", Context.ConnectionId);
+            await base.OnConnectedAsync();
+            return;
         }
-        
+
+        var becameOnline = _connectionRegistry.AddConnection(userId, Context.ConnectionId);
+        var connectionCount = _connectionRegistry.GetConnections(userId).Count;
+
+        _logger.LogInformation(
+            "User {UserId} connected with {ConnectionId}. Active connections: {ConnectionCount}",
+            userId,
+            Context.ConnectionId,
+            connectionCount);
+
+        if (becameOnline)
+            await NotifyFriendPresenceAsync(userId, "FriendOnline", Context.ConnectionAborted);
+
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var userId = GetUserId();
-        if (userId.HasValue)
+        if (!Context.User.TryGetUserId(out var userId))
         {
-            _userConnections.Remove(userId.Value);
-            
-            // Notify friends that user is offline
-            var friends = await _unitOfWork.Friendships.GetUserFriendsAsync(userId.Value);
-            foreach (var friendship in friends)
-            {
-                var friendId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
-                if (_userConnections.TryGetValue(friendId, out var connectionId))
-                {
-                    await Clients.Client(connectionId).SendAsync("FriendOffline", userId.Value);
-                }
-            }
+            await base.OnDisconnectedAsync(exception);
+            return;
         }
-        
+
+        var becameOffline = _connectionRegistry.RemoveConnection(userId, Context.ConnectionId);
+        var connectionCount = _connectionRegistry.GetConnections(userId).Count;
+
+        _logger.LogInformation(
+            "User {UserId} disconnected with {ConnectionId}. Active connections: {ConnectionCount}",
+            userId,
+            Context.ConnectionId,
+            connectionCount);
+
+        if (becameOffline)
+            await NotifyFriendPresenceAsync(userId, "FriendOffline", CancellationToken.None);
+
         await base.OnDisconnectedAsync(exception);
     }
 
     public async Task UpdateLocation(UpdateLocationRequest request)
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return;
+        if (!Context.User.TryGetUserId(out var userId))
+            throw new HubException("Unauthorized.");
 
-        // Update location in cache (Redis)
-        if (_locationCache != null)
+        var result = await _updateUserLocation.ExecuteAsync(new Application.UseCaseContracts.UpdateLocationRequest(
+            userId, 
+            request.Latitude, 
+            request.Longitude), Context.ConnectionAborted);
+        if (!result.IsSuccess)
         {
-            await _locationCache.SetLocationAsync(userId.Value, request.Latitude, request.Longitude);
-        }
+            _logger.LogWarning(
+                "Location update denied for {UserId}. Reason: {Reason}",
+                userId,
+                result.Error);
 
-        // Update location in database
-        var location = await _unitOfWork.UserLocations.GetByUserIdAsync(userId.Value);
-        if (location != null)
-        {
-            location.Latitude = request.Latitude;
-            location.Longitude = request.Longitude;
-            location.UpdatedAt = DateTime.UtcNow;
+            throw new HubException(result.Error ?? "Location update failed.");
         }
-        else
-        {
-            await _unitOfWork.UserLocations.AddAsync(new Domain.Entities.UserLocation
-            {
-                UserId = userId.Value,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude
-            });
-        }
-        
-        await _unitOfWork.SaveChangesAsync();
+        var friendLocation = new FriendLocationDto(result.Value.UserId,
+            result.Value.Username,
+            result.Value.Latitude,
+            result.Value.Longitude,
+            result.Value.UpdatedAtUtc);
+        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(friendLocation, Context.ConnectionAborted);
 
-        // Broadcast to friends
-        var friends = await _unitOfWork.Friendships.GetUserFriendsAsync(userId.Value);
-        var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
-        
-        foreach (var friendship in friends)
-        {
-            var friendId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
-            if (_userConnections.TryGetValue(friendId, out var connectionId))
-            {
-                await Clients.Client(connectionId).SendAsync("FriendLocationUpdated", new FriendLocationDto(
-                    userId.Value,
-                    user?.UserName ?? "",
-                    request.Latitude,
-                    request.Longitude,
-                    DateTime.UtcNow
-                ));
-            }
-        }
+        _logger.LogDebug(
+            "Location updated for user {UserId}: ({Latitude}, {Longitude})",
+            userId,
+            request.Latitude,
+            request.Longitude);
     }
 
     public async Task SendFriendRequest(Guid addresseeId)
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return;
+        if (!Context.User.TryGetUserId(out var senderId))
+            throw new HubException("Unauthorized.");
 
-        if (_userConnections.TryGetValue(addresseeId, out var connectionId))
+        var authResult = await _hubAuthorization.AuthorizeFriendRequestAsync(
+            senderId,
+            addresseeId,
+            Context.ConnectionAborted);
+
+        if (!authResult.IsSuccess)
         {
-            var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
-            await Clients.Client(connectionId).SendAsync("FriendRequestReceived", new
-            {
-                UserId = userId.Value,
-                Username = user?.UserName,
-                AvatarUrl = user?.AvatarUrl
-            });
+            _logger.LogWarning(
+                "Denied SendFriendRequest from {SenderId} to {AddresseeId}. Reason: {Reason}",
+                senderId,
+                addresseeId,
+                authResult.Error);
+
+            throw new HubException(authResult.Error ?? "Forbidden.");
         }
+
+        var connections = _connectionRegistry.GetConnections(addresseeId);
+        if (connections.Count == 0)
+            return;
+
+        var sender = await _unitOfWork.Users.GetByIdAsync(senderId, Context.ConnectionAborted);
+
+        await Clients.Clients(connections).SendAsync("FriendRequestReceived", new
+        {
+            UserId = senderId,
+            Username = sender?.UserName,
+            AvatarUrl = sender?.AvatarUrl
+        }, Context.ConnectionAborted);
     }
 
     public async Task NotifyEventInvitation(Guid eventId, Guid inviteeId)
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return;
+        if (!Context.User.TryGetUserId(out var inviterId))
+            throw new HubException("Unauthorized.");
 
-        if (_userConnections.TryGetValue(inviteeId, out var connectionId))
+        var authResult = await _hubAuthorization.AuthorizeEventInvitationAsync(
+            inviterId,
+            eventId,
+            inviteeId,
+            Context.ConnectionAborted);
+
+        if (!authResult.IsSuccess)
         {
-            var eventEntity = await _unitOfWork.Events.GetByIdAsync(eventId);
-            await Clients.Client(connectionId).SendAsync("EventInvitation", new
-            {
-                EventId = eventId,
-                Title = eventEntity?.Title,
-                InviterId = userId.Value
-            });
+            _logger.LogWarning(
+                "Denied NotifyEventInvitation from {InviterId} to {InviteeId} for event {EventId}. Reason: {Reason}",
+                inviterId,
+                inviteeId,
+                eventId,
+                authResult.Error);
+
+            throw new HubException(authResult.Error ?? "Forbidden.");
         }
+
+        var connections = _connectionRegistry.GetConnections(inviteeId);
+        if (connections.Count == 0)
+            return;
+
+        var eventEntity = await _unitOfWork.Events.GetByIdAsync(eventId, Context.ConnectionAborted);
+
+        await Clients.Clients(connections).SendAsync("EventInvitation", new
+        {
+            EventId = eventId,
+            Title = eventEntity?.Title,
+            InviterId = inviterId
+        }, Context.ConnectionAborted);
     }
 
-    private Guid? GetUserId()
+    private async Task NotifyFriendPresenceAsync(
+        Guid userId,
+        string eventName,
+        CancellationToken cancellationToken)
     {
-        var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                       ?? Context.User?.FindFirst("sub")?.Value;
-        
-        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+        var friendships = await _unitOfWork.Friendships.GetUserFriendsAsync(userId, cancellationToken: cancellationToken);
+
+        foreach (var friendship in friendships)
+        {
+            var friendId = friendship.RequesterId == userId
+                ? friendship.AddresseeId
+                : friendship.RequesterId;
+
+            var connections = _connectionRegistry.GetConnections(friendId);
+            if (connections.Count == 0)
+                continue;
+
+            await Clients.Clients(connections).SendAsync(eventName, userId, cancellationToken);
+        }
     }
 }

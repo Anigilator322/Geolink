@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Geolink.Infrastructure.Options;
+using Geolink.Application.UseCases;
+using Geolink.Application.Services;
 
 namespace Geolink.Infrastructure;
 
@@ -34,11 +36,11 @@ public static class DependencyInjection
 
         // Redis
         var redisConnection = configuration.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConnection))
-        {
-            services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
-            services.AddScoped<ILocationCacheService, LocationCacheService>();
-        }
+        if (string.IsNullOrWhiteSpace(redisConnection))
+            throw new InvalidOperationException("Missing ConnectionStrings:Redis. Redis is required.");
+
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+        services.AddScoped<ILocationCacheService, LocationCacheService>();
 
         // Репозитории и Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -46,9 +48,15 @@ public static class DependencyInjection
         // Сервисы
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailOtpService, EmailOtpService>();
-        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFriendsMapService, FriendsMapService>();
-        
+        services.AddScoped<IHubActionAuthorizationService, HubActionAuthorizationService>();
+        services.AddScoped<IUserService, UserService>();
+
+        //Usecases
+        services.AddScoped<IUpdateUserLocationUseCase, UpdateUserLocationUseCase>();
+        services.AddScoped<ISendAuthCodeUseCase, SendAuthCodeUseCase>();
+        services.AddScoped<IVerifyCodeUseCase, VerifyCodeUseCase>();
+
         // Конфигурация YandexCloudPostbox
         services.Configure<YandexCloudPostboxOptions>(
             configuration.GetSection(YandexCloudPostboxOptions.SectionName));

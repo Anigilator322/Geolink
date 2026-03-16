@@ -16,6 +16,10 @@
 cd Geolink.Mobile
 flutter pub get
 ```
+Настроить env vars:
+```bash
+cp .env.example .env
+```
 Далее - если тестирование на эмуляторе
 ```bash
 flutter emulators
@@ -106,7 +110,12 @@ dotnet run
 ```
 
 ### Mobile
+Настроить env vars:
 
+```bash
+cp .env.example .env
+```
+Далее
 ```bash
 cd Geolink.Mobile
 flutter pub get

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/base_sheet.dart';
 import '../../view_models/profile/profile_view_model.dart';
-import '../../../data/services/secure_storage_service.dart';
+import '../../../data/services/local/secure_storage_service.dart';
 
 class ProfileSheet extends StatefulWidget {
   final VoidCallback onClose;

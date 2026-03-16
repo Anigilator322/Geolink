@@ -1,4 +1,5 @@
-using System.Security.Claims;
+using Geolink.API.Common;
+using Geolink.API.Realtime;
 using Geolink.Application.DTOs.Location;
 using Geolink.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,20 +12,20 @@ namespace Geolink.API.Controllers;
 [Authorize]
 public class LocationController : ControllerBase
 {
-    private readonly ILocationCacheService _locationCache;
     private readonly IFriendsMapService _friendsMap;
+    private readonly IUpdateUserLocationUseCase _updateUserLocation;
+    private readonly IFriendLocationBroadcastService _friendLocationBroadcast;
 
     public LocationController(
-        ILocationCacheService locationCache,
-        IFriendsMapService friendsMap)
+        IFriendsMapService friendsMap,
+        IUpdateUserLocationUseCase updateUserLocation,
+        IFriendLocationBroadcastService friendLocationBroadcast)
     {
-        _locationCache = locationCache;
         _friendsMap = friendsMap;
+        _updateUserLocation = updateUserLocation;
+        _friendLocationBroadcast = friendLocationBroadcast;
     }
 
-    /// <summary>
-    /// Обновить текущую геолокацию пользователя
-    /// </summary>
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -33,50 +34,36 @@ public class LocationController : ControllerBase
         [FromBody] UpdateLocationRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
-        if (userId == Guid.Empty)
+        if (!User.TryGetUserId(out var userId))
             return Unauthorized();
 
-        // Валидация координат
-        if (request.Latitude < -90 || request.Latitude > 90 ||
-            request.Longitude < -180 || request.Longitude > 180)
-            return BadRequest("Invalid coordinates.");
+        var result = await _updateUserLocation.ExecuteAsync(new Application.UseCaseContracts.UpdateLocationRequest(userId, 
+            request.Latitude, 
+            request.Longitude
+        ), cancellationToken);
+        if (!result.IsSuccess)
+            return StatusCode(result.StatusCode ?? StatusCodes.Status400BadRequest, result.Error);
+        var friendLocation = new FriendLocationDto(result.Value.UserId,
+            result.Value.Username,
+            result.Value.Latitude,
+            result.Value.Longitude,
+            result.Value.UpdatedAtUtc);
 
-        await _locationCache.SetLocationAsync(
-            userId,
-            request.Latitude,
-            request.Longitude,
-            cancellationToken);
+        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(friendLocation, cancellationToken);
 
         return NoContent();
     }
 
-    /// <summary>
-    /// Получить список друзей с их актуальными геолокациями на карте
-    /// </summary>
     [HttpGet("friends/map")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IEnumerable<FriendLocationDto>>> GetFriendsMap(
         CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
-        if (userId == Guid.Empty)
+        if (!User.TryGetUserId(out var userId))
             return Unauthorized();
 
         var friends = await _friendsMap.GetFriendsWithLocationsAsync(userId, cancellationToken);
         return Ok(friends);
-    }
-
-    /// <summary>
-    /// Получить текущий userId из JWT claims
-    /// </summary>
-    private Guid GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim?.Value != null && Guid.TryParse(userIdClaim.Value, out var userId))
-            return userId;
-
-        return Guid.Empty;
     }
 }

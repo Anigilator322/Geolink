@@ -1,7 +1,7 @@
-using System.Security.Claims;
-using Geolink.Application.Interfaces;
+using Geolink.API.Common;
 using Geolink.Domain.Entities;
 using Geolink.Domain.Enums;
+using Geolink.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,19 +9,19 @@ namespace Geolink.API.Controllers;
 
 [ApiController]
 [Route("api/dev")]
-[Authorize]
+[Authorize(Policy = "DevelopmentOnly")]
 public class DevController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILocationCacheService _locationCache;
     private readonly ILogger<DevController> _logger;
 
-    private static readonly (string Email, double Latitude, double Longitude)[] TestFriends = new[]
-    {
+    private static readonly (string Email, double Latitude, double Longitude)[] TestFriends =
+    [
         ("friend1@test.com", 55.751244, 37.618423),
         ("friend2@test.com", 55.760000, 37.620000),
         ("friend3@test.com", 55.745000, 37.610000)
-    };
+    ];
 
     public DevController(
         IUnitOfWork unitOfWork,
@@ -33,16 +33,12 @@ public class DevController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Создать тестовых друзей и их локации для development
-    /// </summary>
     [HttpPost("seed-friends")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SeedFriends(CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
-        if (userId == Guid.Empty)
+        if (!User.TryGetUserId(out var userId))
             return Unauthorized();
 
         try
@@ -51,15 +47,15 @@ public class DevController : ControllerBase
             {
                 var friend = await _unitOfWork.Users.GetByEmailAsync(email, cancellationToken);
 
-                if (friend == null)
+                if (friend is null)
                 {
                     friend = new User
                     {
                         Id = Guid.NewGuid(),
                         Email = email,
-                        NormalizedEmail = email.ToUpper(),
+                        NormalizedEmail = email.ToUpperInvariant(),
                         UserName = email.Split('@')[0],
-                        NormalizedUserName = email.Split('@')[0].ToUpper(),
+                        NormalizedUserName = email.Split('@')[0].ToUpperInvariant(),
                         EmailConfirmed = true,
                         CreatedAt = DateTime.UtcNow,
                         Approved = true
@@ -69,12 +65,9 @@ public class DevController : ControllerBase
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
 
-                var friendship = await _unitOfWork.Friendships.GetFriendshipAsync(
-                    userId, 
-                    friend.Id, 
-                    cancellationToken);
+                var friendship = await _unitOfWork.Friendships.GetFriendshipAsync(userId, friend.Id, cancellationToken);
 
-                if (friendship == null)
+                if (friendship is null)
                 {
                     friendship = new Friendship
                     {
@@ -89,30 +82,21 @@ public class DevController : ControllerBase
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
 
-                await _locationCache.SetLocationAsync(
-                    friend.Id,
-                    latitude,
-                    longitude,
-                    cancellationToken);
+                await _locationCache.SetLocationAsync(friend.Id, latitude, longitude, cancellationToken);
 
-                _logger.LogInformation($"Created/updated friend: {email} with location ({latitude}, {longitude})");
+                _logger.LogInformation(
+                    "Created/updated dev friend {Email} with location ({Latitude}, {Longitude})",
+                    email,
+                    latitude,
+                    longitude);
             }
 
             return Ok(new { message = "Mock friends created" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error seeding friends");
+            _logger.LogError(ex, "Error while seeding dev friends");
             return StatusCode(StatusCodes.Status500InternalServerError, "Failed to seed friends");
         }
-    }
-
-    private Guid GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim?.Value != null && Guid.TryParse(userIdClaim.Value, out var userId))
-            return userId;
-
-        return Guid.Empty;
     }
 }

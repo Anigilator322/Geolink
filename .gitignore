@@ -516,3 +516,4 @@ app.*.symbols
 !.env.example
 **/appsettings.Local.json
 **/secrets.json
+/Geolink.Mobile/android/.kotlin
