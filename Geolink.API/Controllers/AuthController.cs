@@ -8,15 +8,16 @@ namespace Geolink.API.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthService _authService;
+    private readonly IVerifyCodeUseCase _verifyCode;
+    private readonly ISendAuthCodeUseCase _sendAuthCode;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        IAuthService authService,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger, IVerifyCodeUseCase verifyCode, ISendAuthCodeUseCase sendAuthCode)
     {
-        _authService = authService;
         _logger = logger;
+        _verifyCode = verifyCode;
+        _sendAuthCode = sendAuthCode;
     }
 
     [HttpPost("send-code")]
@@ -24,7 +25,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SendCode([FromBody] SendCodeRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.SendCodeAsync(request.Email, cancellationToken);
+        var result = await _sendAuthCode.ExecuteAsync(
+            new Application.UseCaseContracts.SendAuthCodeRequest(request.Email), cancellationToken);
 
         if (!result.IsSuccess)
             return BadRequest(result.Error);
@@ -41,10 +43,10 @@ public class AuthController : ControllerBase
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
-        var result = await _authService.VerifyCodeAsync(
+        var result = await _verifyCode.ExecuteAsync(new Application.UseCaseContracts.VerifyCodeRequest(
             request.Email,
             request.Code,
-            ipAddress,
+            ipAddress),
             cancellationToken);
 
         if (!result.IsSuccess)

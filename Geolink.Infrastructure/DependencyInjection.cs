@@ -48,12 +48,14 @@ public static class DependencyInjection
         // Сервисы
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailOtpService, EmailOtpService>();
-        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFriendsMapService, FriendsMapService>();
         services.AddScoped<IHubActionAuthorizationService, HubActionAuthorizationService>();
+        services.AddScoped<IUserService, UserService>();
 
         //Usecases
         services.AddScoped<IUpdateUserLocationUseCase, UpdateUserLocationUseCase>();
+        services.AddScoped<ISendAuthCodeUseCase, SendAuthCodeUseCase>();
+        services.AddScoped<IVerifyCodeUseCase, VerifyCodeUseCase>();
 
         // Конфигурация YandexCloudPostbox
         services.Configure<YandexCloudPostboxOptions>(
