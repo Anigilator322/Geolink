@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../data/services/auth_api_service.dart';
-import '../../../data/services/secure_storage_service.dart';
+import '../../../data/services/api/auth_api_service.dart';
+import '../../../data/services/local/secure_storage_service.dart';
 
 class EmailViewModel extends ChangeNotifier {
   final AuthApiService _authApiService;

@@ -33,7 +33,7 @@ dependencies:
     version: ^4.30.0-beta
   flutter:
     sdk: flutter
-  http: ^1.1.0
+  dio: ^5.9.0
   flutter_secure_storage: ^9.2.2
 
   # The following adds the Cupertino Icons font to your application.
