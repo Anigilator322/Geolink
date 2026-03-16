@@ -37,11 +37,19 @@ public class LocationController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
 
-        var result = await _updateUserLocation.ExecuteAsync(userId, request, cancellationToken);
+        var result = await _updateUserLocation.ExecuteAsync(new Application.UseCaseContracts.UpdateLocationRequest(userId, 
+            request.Latitude, 
+            request.Longitude
+        ), cancellationToken);
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode ?? StatusCodes.Status400BadRequest, result.Error);
+        var friendLocation = new FriendLocationDto(result.Value.UserId,
+            result.Value.Username,
+            result.Value.Latitude,
+            result.Value.Longitude,
+            result.Value.UpdatedAtUtc);
 
-        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(result.Value!, cancellationToken);
+        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(friendLocation, cancellationToken);
 
         return NoContent();
     }

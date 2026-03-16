@@ -1,12 +1,11 @@
 using Geolink.Application.Common;
-using Geolink.Application.DTOs.Location;
+using Geolink.Application.UseCaseContracts;
 
 namespace Geolink.Application.Interfaces;
 
 public interface IUpdateUserLocationUseCase
 {
-    Task<Result<FriendLocationDto>> ExecuteAsync(
-        Guid userId,
+    Task<Result<UpdateLocationResponse>> ExecuteAsync(
         UpdateLocationRequest request,
         CancellationToken cancellationToken = default);
 }

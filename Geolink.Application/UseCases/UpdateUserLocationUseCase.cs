@@ -1,11 +1,11 @@
 using Geolink.Application.Common;
-using Geolink.Application.DTOs.Location;
 using Geolink.Application.Interfaces;
+using Geolink.Application.UseCaseContracts;
 using Geolink.Domain.Entities;
 
 namespace Geolink.Application.UseCases;
 
-public class UpdateUserLocationUseCase : IUpdateUserLocationUseCase
+public class UpdateUserLocationUseCase : UseCaseBase<UpdateLocationResponse, UpdateLocationRequest>, IUpdateUserLocationUseCase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILocationCacheService _locationCache;
@@ -16,29 +16,28 @@ public class UpdateUserLocationUseCase : IUpdateUserLocationUseCase
         _locationCache = locationCache;
     }
 
-    public async Task<Result<FriendLocationDto>> ExecuteAsync(
-        Guid userId,
+    public override async Task<Result<UpdateLocationResponse>> ExecuteAsync(
         UpdateLocationRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (userId == Guid.Empty)
-            return Result<FriendLocationDto>.Unauthorized("Invalid user context.");
+        if (request.UserId == Guid.Empty)
+            return Result<UpdateLocationResponse>.Unauthorized("Invalid user context.");
 
         if (!IsValidCoordinates(request.Latitude, request.Longitude))
-            return Result<FriendLocationDto>.Failure("Invalid coordinates.");
+            return Result<UpdateLocationResponse>.Failure("Invalid coordinates.");
 
-        var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+        var user = await _unitOfWork.Users.GetByIdAsync(request.UserId, cancellationToken);
         if (user is null)
-            return Result<FriendLocationDto>.NotFound("User was not found.");
+            return Result<UpdateLocationResponse>.NotFound("User was not found.");
 
         var timestamp = DateTime.UtcNow;
 
-        var location = await _unitOfWork.UserLocations.GetByUserIdAsync(userId, cancellationToken);
+        var location = await _unitOfWork.UserLocations.GetByUserIdAsync(request.UserId, cancellationToken);
         if (location is null)
         {
             await _unitOfWork.UserLocations.AddAsync(new UserLocation
             {
-                UserId = userId,
+                UserId = request.UserId,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
                 IsSharing = true
@@ -53,15 +52,15 @@ public class UpdateUserLocationUseCase : IUpdateUserLocationUseCase
         }
 
         await _locationCache.SetLocationAsync(
-            userId,
+            request.UserId,
             request.Latitude,
             request.Longitude,
             cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<FriendLocationDto>.Success(new FriendLocationDto(
-            userId,
+        return Result<UpdateLocationResponse>.Success(new UpdateLocationResponse(
+            request.UserId,
             user.UserName ?? string.Empty,
             request.Latitude,
             request.Longitude,

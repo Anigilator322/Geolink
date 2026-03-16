@@ -85,7 +85,10 @@ public class GeolinkHub : Hub
         if (!Context.User.TryGetUserId(out var userId))
             throw new HubException("Unauthorized.");
 
-        var result = await _updateUserLocation.ExecuteAsync(userId, request, Context.ConnectionAborted);
+        var result = await _updateUserLocation.ExecuteAsync(new Application.UseCaseContracts.UpdateLocationRequest(
+            userId, 
+            request.Latitude, 
+            request.Longitude), Context.ConnectionAborted);
         if (!result.IsSuccess)
         {
             _logger.LogWarning(
@@ -95,8 +98,12 @@ public class GeolinkHub : Hub
 
             throw new HubException(result.Error ?? "Location update failed.");
         }
-
-        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(result.Value!, Context.ConnectionAborted);
+        var friendLocation = new FriendLocationDto(result.Value.UserId,
+            result.Value.Username,
+            result.Value.Latitude,
+            result.Value.Longitude,
+            result.Value.UpdatedAtUtc);
+        await _friendLocationBroadcast.BroadcastFriendLocationUpdatedAsync(friendLocation, Context.ConnectionAborted);
 
         _logger.LogDebug(
             "Location updated for user {UserId}: ({Latitude}, {Longitude})",
