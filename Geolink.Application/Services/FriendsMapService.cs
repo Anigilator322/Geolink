@@ -2,7 +2,7 @@ using Geolink.Application.DTOs.Location;
 using Geolink.Application.Interfaces;
 using Geolink.Domain.Enums;
 
-namespace Geolink.Infrastructure.Services;
+namespace Geolink.Application.Services;
 
 public class FriendsMapService : IFriendsMapService
 {
