@@ -7,27 +7,6 @@ import '../../../data/repositories/location_repository.dart';
 import 'map_state.dart';
 
 class MapViewModel extends ChangeNotifier {
-  static const List<Friend> _mockFriends = [
-    Friend(
-      userId: '1',
-      displayName: 'Anastasia',
-      avatarUrl: '',
-      bio: 'Coffee and city walks',
-    ),
-    Friend(
-      userId: '2',
-      displayName: 'Anatoly',
-      avatarUrl: '',
-      bio: 'Cycling around town',
-    ),
-    Friend(
-      userId: '3',
-      displayName: 'Boris',
-      avatarUrl: '',
-      bio: 'Always near the river',
-    ),
-  ];
-
   MapViewModel({LocationRepository? locationRepository})
     : _locationRepository = locationRepository ?? LocationRepository();
 
@@ -42,31 +21,9 @@ class MapViewModel extends ChangeNotifier {
     state = state.applyState(isLoading: true, clearError: true);
     notifyListeners();
 
-    final now = DateTime.now();
-    final mockLocations = [
-      Location(
-        userId: '1',
-        latitude: 56.5010,
-        longitude: 84.9815,
-        updatedAt: now,
-      ),
-      Location(
-        userId: '2',
-        latitude: 56.4925,
-        longitude: 84.9680,
-        updatedAt: now,
-      ),
-      Location(
-        userId: '3',
-        latitude: 56.5063,
-        longitude: 84.9578,
-        updatedAt: now,
-      ),
-    ];
-
     state = state.applyState(
-      friends: _mockFriends,
-      friendLocations: mockLocations,
+      friends: const [],
+      friendLocations: const [],
       clearSelectedFriend: true,
       clearError: true,
     );
@@ -122,8 +79,12 @@ class MapViewModel extends ChangeNotifier {
   void onFriendMarkerTapped(String userId) {
     final friend = state.friends.firstWhere(
       (f) => f.userId == userId,
-      orElse: () =>
-          Friend(userId: userId, displayName: '', avatarUrl: '', bio: ''),
+      orElse: () => Friend(
+        userId: userId,
+        displayName: 'Friend ${_shortUserId(userId)}',
+        avatarUrl: '',
+        bio: '',
+      ),
     );
     state = state.applyState(selectedFriend: friend);
     notifyListeners();
@@ -175,6 +136,10 @@ class MapViewModel extends ChangeNotifier {
     } finally {
       _isSendingLocation = false;
     }
+  }
+
+  String _shortUserId(String userId) {
+    return userId.length > 8 ? userId.substring(0, 8) : userId;
   }
 
   @override
