@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ui/views/auth/email_view.dart';
 import 'ui/views/auth/auth_gate.dart';
 import 'ui/views/map/map_view.dart';
@@ -10,6 +11,7 @@ void main() async {
     apiKey: '2a1df122-2fe0-4b94-b143-313f1de7d81c',
     locale: 'ru_RU',
   );
+  await dotenv.load(fileName: '.env');
   runApp(const GeoLinkApp());
 }
 

@@ -1,5 +1,7 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConfig {
-  static const String apiDomain = 'http://192.168.0.15:5169';
-  static const String apiBaseUrl = '$apiDomain/api';
-  static const String authBaseUrl = '$apiDomain/api/auth';
+  static String apiDomain = dotenv.env['API_DOMAIN'] ?? 'http://localhost:5000';
+  static String apiBaseUrl = '${dotenv.env['API_DOMAIN']}/api';
+  static String authBaseUrl = '${dotenv.env['API_DOMAIN']}/api/auth';
 }
