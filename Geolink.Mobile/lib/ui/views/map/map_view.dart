@@ -286,7 +286,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       )
       ..setIcon(_currentUserPinImage)
       ..setIconStyle(
-        IconStyle(anchor: math.Point(0.5, 0.5), scale: 0.16, zIndex: 20.0),
+        IconStyle(anchor: math.Point(0.5, 0.5), scale: 2, zIndex: 20.0),
       );
 
     placemark.setText('Вы');
