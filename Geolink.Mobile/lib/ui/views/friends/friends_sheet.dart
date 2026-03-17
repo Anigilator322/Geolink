@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/base_sheet.dart';
 import '../../view_models/friends/friends_view_model.dart';
@@ -26,6 +29,7 @@ class _FriendsSheetState extends State<FriendsSheet>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    unawaited(widget.viewModel.load());
   }
 
   @override
@@ -34,7 +38,7 @@ class _FriendsSheetState extends State<FriendsSheet>
     _searchController.dispose();
     super.dispose();
   }
-   
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -57,95 +61,54 @@ class _FriendsSheetState extends State<FriendsSheet>
       ),
     );
   }
-  Widget _buildMyFriendsList() {
-  final friends = widget.viewModel.myFriends;
-  if (friends.isEmpty) {
-    return const Center(
-      child: Text('Нет друзей', style: TextStyle(color: AppColors.textGrey)),
-    );
-  }
-  return ListView.builder(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    itemCount: friends.length,
-    itemBuilder: (context, index) {
-      final friend = friends[index];
-      return Column(
-        children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Colors.grey[300],
-              child: const Icon(Icons.person, color: Colors.grey),
-            ),
-            title: Text(friend.displayName), // ← только имя, без bio
-          ),
-          const Divider(height: 1, thickness: 0.5),
-        ],
-      );
-    },
-  );
-}
-
-Widget _buildRequestsList() {
-  final requests = widget.viewModel.incomingRequests;
-  if (requests.isEmpty) {
-    return const Center(
-      child: Text('Нет запросов', style: TextStyle(color: AppColors.textGrey)),
-    );
-  }
-  return ListView.builder(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    itemCount: requests.length,
-    itemBuilder: (context, index) {
-      final request = requests[index];
-      return Column(
-        children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Colors.grey[300],
-              child: const Icon(Icons.person, color: Colors.grey),
-            ),
-            title: Text(request.displayName),
-            // Иконки максимально справа
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.check_outlined,
-                      color: AppColors.primary, size: 28),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close,
-                      color: Colors.red, size: 28),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 0.5),
-        ],
-      );
-    },
-  );
-}
-  // ── Body ───────────────────────────────────────────────────────────────────
 
   Widget _buildBody() {
+    if (widget.viewModel.isLoading &&
+        widget.viewModel.myFriends.isEmpty &&
+        widget.viewModel.incomingRequests.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final error = widget.viewModel.errorMessage;
+    if (error != null &&
+        error.isNotEmpty &&
+        widget.viewModel.myFriends.isEmpty &&
+        widget.viewModel.incomingRequests.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                error,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => unawaited(widget.viewModel.load(force: true)),
+              child: const Text('Повторить'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         _buildTabBar(),
         Expanded(
           child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildMyFriendsList(),
-                _buildRequestsList(),
-                const Center(child: Text('Приглашения')), 
-              ],
-            ),
+            controller: _tabController,
+            children: [
+              _buildMyFriendsList(),
+              _buildRequestsList(),
+              const Center(child: Text('Приглашения')),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -173,7 +136,86 @@ Widget _buildRequestsList() {
     );
   }
 
-  // ── Search overlay ─────────────────────────────────────────────────────────
+  Widget _buildMyFriendsList() {
+    final friends = widget.viewModel.myFriends;
+    if (friends.isEmpty) {
+      return const Center(
+        child: Text('Нет друзей', style: TextStyle(color: AppColors.textGrey)),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: friends.length,
+      itemBuilder: (context, index) {
+        final friend = friends[index];
+        return Column(
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: Colors.grey[300],
+                child: const Icon(Icons.person, color: Colors.grey),
+              ),
+              title: Text(friend.displayName),
+            ),
+            const Divider(height: 1, thickness: 0.5),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRequestsList() {
+    final requests = widget.viewModel.incomingRequests;
+    if (requests.isEmpty) {
+      return const Center(
+        child: Text(
+          'Нет входящих запросов',
+          style: TextStyle(color: AppColors.textGrey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: requests.length,
+      itemBuilder: (context, index) {
+        final request = requests[index];
+        return Column(
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: Colors.grey[300],
+                child: const Icon(Icons.person, color: Colors.grey),
+              ),
+              title: Text(request.displayName),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.check_outlined,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
+                    onPressed: () => unawaited(_acceptRequest(request)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red, size: 28),
+                    onPressed: () =>
+                        widget.viewModel.dismissIncomingRequest(request),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, thickness: 0.5),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildSearchOverlay() {
     return Positioned(
@@ -202,15 +244,39 @@ Widget _buildRequestsList() {
                 controller: _searchController,
                 autofocus: true,
                 onChanged: widget.viewModel.onSearch,
+                onSubmitted: (_) => unawaited(_sendFriendRequestFromInput()),
                 decoration: InputDecoration(
-                  hintText: 'Поиск...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      _searchController.clear();
-                      widget.viewModel.stopSearch();
-                    },
+                  hintText: 'Введите имя пользователя',
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.primary,
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.viewModel.isSendingRequest)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.send, size: 20),
+                          onPressed: () =>
+                              unawaited(_sendFriendRequestFromInput()),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          widget.viewModel.stopSearch();
+                        },
+                      ),
+                    ],
                   ),
                   filled: true,
                   fillColor: AppColors.inputBackground,
@@ -223,20 +289,23 @@ Widget _buildRequestsList() {
               ),
             ),
             if (widget.viewModel.searchResults.isNotEmpty)
-              Container(
+              ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView.builder(
                   padding: EdgeInsets.zero,
                   shrinkWrap: true,
                   itemCount: widget.viewModel.searchResults.length,
-                 itemBuilder: (context, index) {
-                    final user = widget.viewModel.searchResults[index]; 
+                  itemBuilder: (context, index) {
+                    final user = widget.viewModel.searchResults[index];
                     return ListTile(
                       title: Text(user.displayName),
                       subtitle: user.bio.isNotEmpty ? Text(user.bio) : null,
                       onTap: () {
-                        _searchController.clear();
-                        widget.viewModel.stopSearch();
+                        _searchController.text = user.displayName;
+                        _searchController
+                            .selection = TextSelection.fromPosition(
+                          TextPosition(offset: _searchController.text.length),
+                        );
                       },
                     );
                   },
@@ -246,5 +315,39 @@ Widget _buildRequestsList() {
         ),
       ),
     );
+  }
+
+  Future<void> _sendFriendRequestFromInput() async {
+    final message = await widget.viewModel.sendFriendRequestByUsername(
+      _searchController.text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (message == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Запрос отправлен')));
+      _searchController.clear();
+      widget.viewModel.stopSearch();
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _acceptRequest(FriendListItem request) async {
+    final message = await widget.viewModel.acceptFriendRequest(request);
+    if (!mounted || message == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

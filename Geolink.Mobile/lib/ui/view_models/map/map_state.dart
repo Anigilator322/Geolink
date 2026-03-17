@@ -25,14 +25,19 @@ class MapState {
     Friend? selectedFriend,
     bool? isLoading,
     String? error,
+    bool clearCurrentUserLocation = false,
     bool clearSelectedFriend = false,
     bool clearError = false,
   }) {
     return MapState(
-      currentUserLocation: currentUserLocation ?? this.currentUserLocation,
+      currentUserLocation: clearCurrentUserLocation
+          ? null
+          : (currentUserLocation ?? this.currentUserLocation),
       friends: friends ?? this.friends,
       friendLocations: friendLocations ?? this.friendLocations,
-      selectedFriend: clearSelectedFriend ? null : (selectedFriend ?? this.selectedFriend),
+      selectedFriend: clearSelectedFriend
+          ? null
+          : (selectedFriend ?? this.selectedFriend),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );

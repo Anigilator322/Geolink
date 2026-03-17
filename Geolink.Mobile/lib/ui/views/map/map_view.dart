@@ -48,29 +48,25 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
 
   MapObjectCollection? _friendPlacemarks;
   MapObjectCollection? _eventPlacemarks;
+  MapObjectCollection? _currentUserPlacemark;
+  bool _hasLocationPermission = false;
 
-  late final _friendPinImage =
-      mapkiti.ImageProvider.fromImageProvider(const AssetImage('assets/icon/pin.png'));
-  late final _eventPinImage =
-      mapkiti.ImageProvider.fromImageProvider(const AssetImage('assets/icon/pin2.png'));
+  late final _friendPinImage = mapkiti.ImageProvider.fromImageProvider(
+    const AssetImage('assets/icon/pin.png'),
+  );
+  late final _eventPinImage = mapkiti.ImageProvider.fromImageProvider(
+    const AssetImage('assets/icon/pin2.png'),
+  );
+  late final _currentUserPinImage = mapkiti.ImageProvider.fromImageProvider(
+    const AssetImage('assets/icon/icon.png'),
+  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initViewModels();
-    _requestLocationPermission();
-  }
-
-  Future<void> _requestLocationPermission() async {
-    final status = await Permission.location.request();
-    if (!status.isGranted && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Для работы карты необходимо разрешение на геолокацию'),
-        ),
-      );
-    }
+    unawaited(_initializeMapViewModel());
   }
 
   void _initViewModels() {
@@ -79,7 +75,98 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     _favorViewModel = FavorViewModel();
     _friendsViewModel = FriendsViewModel();
     _profileViewModel = ProfileViewModel();
-    _mapViewModel.initialize();
+  }
+
+  Future<void> _initializeMapViewModel() async {
+    final permissionStatus = await _requestLocationPermissionIfNeeded();
+    final hasLocationPermission = _isLocationPermissionGranted(
+      permissionStatus,
+    );
+    _hasLocationPermission = hasLocationPermission;
+
+    await _mapViewModel.initialize(
+      enableCurrentLocationTracking: hasLocationPermission,
+    );
+
+    if (!mounted) return;
+    if (!hasLocationPermission) {
+      _showLocationPermissionSnackbar(permissionStatus);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncLocationPermissionAfterResume());
+    }
+  }
+
+  Future<void> _syncLocationPermissionAfterResume() async {
+    final status = await Permission.location.status;
+    final isGranted = _isLocationPermissionGranted(status);
+    if (isGranted == _hasLocationPermission) {
+      return;
+    }
+
+    _hasLocationPermission = isGranted;
+
+    if (isGranted) {
+      await _mapViewModel.enableCurrentUserLocationTracking();
+      return;
+    }
+
+    await _mapViewModel.disableCurrentUserLocationTracking();
+    if (!mounted) return;
+    _showLocationPermissionSnackbar(status);
+  }
+
+  Future<PermissionStatus> _requestLocationPermissionIfNeeded() async {
+    final status = await Permission.location.status;
+    if (_isLocationPermissionGranted(status) || status.isPermanentlyDenied) {
+      return status;
+    }
+
+    if (status.isDenied) {
+      return Permission.location.request();
+    }
+
+    return status;
+  }
+
+  bool _isLocationPermissionGranted(PermissionStatus status) {
+    return status.isGranted || status.isLimited;
+  }
+
+  void _showLocationPermissionSnackbar(PermissionStatus status) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Location access is disabled. Your marker and centering are unavailable.',
+        ),
+        action: SnackBarAction(
+          label: status.isPermanentlyDenied ? 'Settings' : 'Allow',
+          onPressed: status.isPermanentlyDenied
+              ? openAppSettings
+              : () => unawaited(_retryLocationPermission()),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _retryLocationPermission() async {
+    final status = await Permission.location.request();
+    final isGranted = _isLocationPermissionGranted(status);
+    _hasLocationPermission = isGranted;
+
+    if (isGranted) {
+      await _mapViewModel.enableCurrentUserLocationTracking();
+      return;
+    }
+
+    if (!mounted) return;
+    _showLocationPermissionSnackbar(status);
   }
 
   void _onEventMarkerTapped(EventItem event) {
@@ -96,7 +183,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
   @override
   void dispose() {
     _eventsViewModel.removeListener(_renderEventPlacemarks);
-    _mapViewModel.removeListener(_updateFriendPlacemarks);
+    _mapViewModel.removeListener(_syncMapWithState);
     _zoomTimer?.cancel();
     _mapViewModel.dispose();
     _eventsViewModel.dispose();
@@ -105,6 +192,11 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     _profileViewModel.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _syncMapWithState() {
+    _updateFriendPlacemarks();
+    _updateCurrentUserPlacemark();
   }
 
   void _moveZoom(double step) {
@@ -120,6 +212,30 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       animation: mapkit_anim.Animation(
         type: AnimationType.Linear,
         duration: 0.1,
+      ),
+    );
+  }
+
+  void _centerOnCurrentUser() {
+    if (_mapWindow == null) return;
+
+    final currentLocation = _mapViewModel.state.currentUserLocation;
+    if (currentLocation == null) return;
+
+    final currentCamera = _mapWindow!.map.cameraPosition;
+    _mapWindow!.map.move(
+      CameraPosition(
+        Point(
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        ),
+        zoom: currentCamera.zoom,
+        azimuth: currentCamera.azimuth,
+        tilt: currentCamera.tilt,
+      ),
+      animation: mapkit_anim.Animation(
+        type: AnimationType.Linear,
+        duration: 0.25,
       ),
     );
   }
@@ -178,20 +294,20 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       final placemark = _friendPlacemarks!.addPlacemark()
         ..geometry = Point(latitude: loc.latitude, longitude: loc.longitude)
         ..setIcon(_friendPinImage)
-        ..setIconStyle(IconStyle(
-          anchor: math.Point(0.5, 1.0),
-          scale: 2.5,
-          zIndex: 10.0,
-        ));
+        ..setIconStyle(
+          IconStyle(anchor: math.Point(0.5, 1.0), scale: 2.5, zIndex: 10.0),
+        );
 
       if (friend != null) {
         placemark.setText(friend.displayName);
-        placemark.setTextStyle(mapkit_anim.TextStyle(
-          placement: mapkit_anim.TextStylePlacement.Top,
-          outlineColor: Colors.white,
-          outlineWidth: 1.0,
-          offset: 4.0,
-        ));
+        placemark.setTextStyle(
+          mapkit_anim.TextStyle(
+            placement: mapkit_anim.TextStylePlacement.Top,
+            outlineColor: Colors.white,
+            outlineWidth: 1.0,
+            offset: 4.0,
+          ),
+        );
       }
 
       placemark.addTapListener(
@@ -213,24 +329,46 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       final placemark = _eventPlacemarks!.addPlacemark()
         ..geometry = Point(latitude: event.latitude, longitude: event.longitude)
         ..setIcon(_eventPinImage)
-        ..setIconStyle(IconStyle(
-          anchor: math.Point(0.5, 1.0),
-          scale: 2.5,
-          zIndex: 5.0,
-        ));
+        ..setIconStyle(
+          IconStyle(anchor: math.Point(0.5, 1.0), scale: 2.5, zIndex: 5.0),
+        );
 
       placemark.setText(event.name);
-      placemark.setTextStyle(mapkit_anim.TextStyle(
-        placement: mapkit_anim.TextStylePlacement.Top,
-        outlineColor: Colors.white,
-        outlineWidth: 1.0,
-        offset: 4.0,
-      ));
+      placemark.setTextStyle(
+        mapkit_anim.TextStyle(
+          placement: mapkit_anim.TextStylePlacement.Top,
+          outlineColor: Colors.white,
+          outlineWidth: 1.0,
+          offset: 4.0,
+        ),
+      );
 
       placemark.addTapListener(
         _EventTapListener(onTap: () => _onEventMarkerTapped(event)),
       );
     }
+  }
+
+  void _updateCurrentUserPlacemark() {
+    if (_mapWindow == null) return;
+
+    _currentUserPlacemark ??= _mapWindow!.map.mapObjects.addCollection();
+    _currentUserPlacemark!.clear();
+
+    final currentLocation = _mapViewModel.state.currentUserLocation;
+    if (currentLocation == null) {
+      return;
+    }
+
+    final placemark = _currentUserPlacemark!.addPlacemark()
+      ..geometry = Point(
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      )
+      ..setIcon(_currentUserPinImage)
+      ..setIconStyle(
+        IconStyle(anchor: math.Point(0.5, 0.5), scale: 2, zIndex: 20.0),
+      );
   }
 
   @override
@@ -241,6 +379,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
         children: [
           _buildMap(),
           _buildZoomControls(),
+          _buildCurrentUserCenterButton(),
           _buildFriendCard(),
           if (_selectedEvent != null) _buildEventCard(_selectedEvent!),
           _buildSheet(_ActiveSheet.events),
@@ -268,8 +407,8 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
         );
         _renderEventPlacemarks();
         _eventsViewModel.addListener(_renderEventPlacemarks);
-        _mapViewModel.addListener(_updateFriendPlacemarks);
-        _updateFriendPlacemarks();
+        _mapViewModel.addListener(_syncMapWithState);
+        _syncMapWithState();
       },
     );
   }
@@ -319,6 +458,42 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildCurrentUserCenterButton() {
+    return Positioned(
+      right: 16,
+      bottom: 76,
+      child: ListenableBuilder(
+        listenable: _mapViewModel,
+        builder: (context, _) {
+          final hasLocation = _mapViewModel.state.currentUserLocation != null;
+          return GestureDetector(
+            onTap: hasLocation ? _centerOnCurrentUser : null,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.my_location,
+                color: hasLocation ? Colors.black87 : Colors.black38,
+                size: 24,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildFriendCard() {
     return ListenableBuilder(
       listenable: _mapViewModel,
@@ -356,13 +531,22 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
         );
         break;
       case _ActiveSheet.favor:
-        child = FavorSheet(onClose: _closeAllSheets, viewModel: _favorViewModel);
+        child = FavorSheet(
+          onClose: _closeAllSheets,
+          viewModel: _favorViewModel,
+        );
         break;
       case _ActiveSheet.friends:
-        child = FriendsSheet(onClose: _closeAllSheets, viewModel: _friendsViewModel);
+        child = FriendsSheet(
+          onClose: _closeAllSheets,
+          viewModel: _friendsViewModel,
+        );
         break;
       case _ActiveSheet.profile:
-        child = ProfileSheet(onClose: _closeAllSheets, viewModel: _profileViewModel);
+        child = ProfileSheet(
+          onClose: _closeAllSheets,
+          viewModel: _profileViewModel,
+        );
         break;
       case _ActiveSheet.none:
         return const SizedBox.shrink();
@@ -400,10 +584,30 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _NavItem(assetPath: 'assets/icon/мероприятия.svg', index: 1, selectedIndex: _selectedIndex, onTap: _onNavItemTap),
-              _NavItem(assetPath: 'assets/icon/избр.svg',         index: 2, selectedIndex: _selectedIndex, onTap: _onNavItemTap),
-              _NavItem(assetPath: 'assets/icon/друзья.svg',       index: 3, selectedIndex: _selectedIndex, onTap: _onNavItemTap),
-              _NavItem(assetPath: 'assets/icon/профиль.svg',      index: 4, selectedIndex: _selectedIndex, onTap: _onNavItemTap),
+              _NavItem(
+                assetPath: 'assets/icon/мероприятия.svg',
+                index: 1,
+                selectedIndex: _selectedIndex,
+                onTap: _onNavItemTap,
+              ),
+              _NavItem(
+                assetPath: 'assets/icon/избр.svg',
+                index: 2,
+                selectedIndex: _selectedIndex,
+                onTap: _onNavItemTap,
+              ),
+              _NavItem(
+                assetPath: 'assets/icon/друзья.svg',
+                index: 3,
+                selectedIndex: _selectedIndex,
+                onTap: _onNavItemTap,
+              ),
+              _NavItem(
+                assetPath: 'assets/icon/профиль.svg',
+                index: 4,
+                selectedIndex: _selectedIndex,
+                onTap: _onNavItemTap,
+              ),
             ],
           ),
         ),

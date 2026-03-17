@@ -11,12 +11,14 @@ public record FriendDto(
 );
 
 public record FriendRequestDto(
-    Guid FriendshipId,
-    Guid UserId,
-    string Username,
-    string? AvatarUrl,
-    DateTime RequestedAt,
-    bool IsIncoming
+    string AddresseeUsername
+);
+
+public record IncominFriendshipDto(
+    Guid Id,
+    Guid IssuerId,
+    string IssuerUsername,
+    FriendshipStatus Status
 );
 
 public record SendFriendRequestRequest(

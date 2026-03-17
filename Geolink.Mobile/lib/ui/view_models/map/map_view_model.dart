@@ -14,16 +14,18 @@ class MapViewModel extends ChangeNotifier {
   StreamSubscription<Location>? _friendLocationSubscription;
   StreamSubscription<Location>? _currentLocationSubscription;
   bool _isSendingLocation = false;
+  bool _isCurrentLocationTrackingEnabled = false;
 
   MapState state = const MapState(isLoading: false);
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool enableCurrentLocationTracking = true}) async {
     state = state.applyState(isLoading: true, clearError: true);
     notifyListeners();
 
     state = state.applyState(
       friends: const [],
       friendLocations: const [],
+      clearCurrentUserLocation: true,
       clearSelectedFriend: true,
       clearError: true,
     );
@@ -33,20 +35,14 @@ class MapViewModel extends ChangeNotifier {
 
       await _friendLocationSubscription?.cancel();
       _friendLocationSubscription = _locationRepository.friendLocationUpdates
-          .listen(_onFriendLocationUpdated);
+          .listen(
+            _onFriendLocationUpdated,
+            onError: _onFriendLocationStreamError,
+          );
 
-      try {
-        final currentLocation = await _locationRepository
-            .getCurrentUserLocationOnce();
-        state = state.applyState(currentUserLocation: currentLocation);
-      } catch (_) {
-        // Ignore GPS availability on initialization; realtime friend updates remain available.
+      if (enableCurrentLocationTracking) {
+        await enableCurrentUserLocationTracking(notify: false);
       }
-
-      await _currentLocationSubscription?.cancel();
-      _currentLocationSubscription = _locationRepository
-          .watchCurrentUserLocation(distanceFilterMeters: 0)
-          .listen(_onCurrentUserLocationUpdated);
 
       state = state.applyState(isLoading: false);
     } catch (e) {
@@ -56,6 +52,54 @@ class MapViewModel extends ChangeNotifier {
       );
     }
 
+    notifyListeners();
+  }
+
+  Future<void> enableCurrentUserLocationTracking({bool notify = true}) async {
+    if (_isCurrentLocationTrackingEnabled) {
+      return;
+    }
+
+    try {
+      final currentLocation = await _locationRepository
+          .getCurrentUserLocationOnce();
+      state = state.applyState(
+        currentUserLocation: currentLocation,
+        clearError: true,
+      );
+
+      await _currentLocationSubscription?.cancel();
+      _currentLocationSubscription = _locationRepository
+          .watchCurrentUserLocation(distanceFilterMeters: 0)
+          .listen(
+            _onCurrentUserLocationUpdated,
+            onError: _onCurrentLocationStreamError,
+          );
+
+      _isCurrentLocationTrackingEnabled = true;
+    } catch (e) {
+      _isCurrentLocationTrackingEnabled = false;
+      state = state.applyState(
+        error: 'Location tracking unavailable: ${e.toString()}',
+      );
+    }
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> disableCurrentUserLocationTracking({
+    bool clearCurrentLocation = true,
+  }) async {
+    _isCurrentLocationTrackingEnabled = false;
+    await _currentLocationSubscription?.cancel();
+    _currentLocationSubscription = null;
+
+    state = state.applyState(
+      clearCurrentUserLocation: clearCurrentLocation,
+      clearError: true,
+    );
     notifyListeners();
   }
 
@@ -118,6 +162,21 @@ class MapViewModel extends ChangeNotifier {
     state = state.applyState(currentUserLocation: location, clearError: true);
     notifyListeners();
     unawaited(_sendLocationFromGpsEvent(location));
+  }
+
+  void _onCurrentLocationStreamError(Object error) {
+    _isCurrentLocationTrackingEnabled = false;
+    state = state.applyState(
+      error: 'Location stream error: ${error.toString()}',
+    );
+    notifyListeners();
+  }
+
+  void _onFriendLocationStreamError(Object error) {
+    state = state.applyState(
+      error: 'Friend location stream error: ${error.toString()}',
+    );
+    notifyListeners();
   }
 
   Future<void> _sendLocationFromGpsEvent(Location location) async {

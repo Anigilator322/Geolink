@@ -35,7 +35,6 @@ class ApiClient {
     required String fallback,
   }) {
     final data = error.response?.data;
-
     if (data is String && data.isNotEmpty) {
       return data;
     }
