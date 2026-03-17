@@ -58,3 +58,4 @@ docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod
 - API reads secrets from environment variables in `staging` and `prod`.
 - `appsettings.Development.json` is only for local API launch.
 - `postgres` and `redis` ports are published in `local`/`staging`, but not in `prod`.
+- API applies EF Core migrations automatically on startup (`Database.Migrate()`).

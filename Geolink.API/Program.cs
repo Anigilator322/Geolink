@@ -5,9 +5,11 @@ using Geolink.API.Hubs;
 using Geolink.API.Realtime;
 using Geolink.Application;
 using Geolink.Infrastructure;
+using Geolink.Infrastructure.Data;
 using Geolink.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Geolink.API;
@@ -127,6 +129,12 @@ public class Program
             builder.Configuration.GetSection("YandexCloudPostbox"));
 
         var app = builder.Build();
+        
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<GeolinkDbContext>();
+            dbContext.Database.Migrate();
+        }
 
         if (app.Environment.IsDevelopment())
         {
