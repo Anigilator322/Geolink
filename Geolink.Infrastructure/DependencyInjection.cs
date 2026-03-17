@@ -68,11 +68,13 @@ public static class DependencyInjection
 
         if (useYandexPostbox)
         {
+            Console.WriteLine("Using Yandex Cloud Postbox for email sending.");
             services.AddScoped<IEmailSender>(sp =>
                 sp.GetRequiredService<YandexCloudEmailSender>());
         }
         else
         {
+            Console.WriteLine("Yandex Cloud Postbox is disabled. Using ConsoleEmailSender for email sending.");
             services.AddScoped<IEmailSender, ConsoleEmailSender>();
         }
         return services;
