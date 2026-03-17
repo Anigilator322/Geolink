@@ -49,6 +49,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
   MapObjectCollection? _friendPlacemarks;
   MapObjectCollection? _eventPlacemarks;
   MapObjectCollection? _currentUserPlacemark;
+  bool _hasLocationPermission = false;
 
   late final _friendPinImage = mapkiti.ImageProvider.fromImageProvider(
     const AssetImage('assets/icon/pin.png'),
@@ -65,18 +66,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initViewModels();
-    _requestLocationPermission();
-  }
-
-  Future<void> _requestLocationPermission() async {
-    final status = await Permission.location.request();
-    if (!status.isGranted && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Для работы карты необходимо разрешение на геолокацию'),
-        ),
-      );
-    }
+    unawaited(_initializeMapViewModel());
   }
 
   void _initViewModels() {
@@ -85,7 +75,98 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     _favorViewModel = FavorViewModel();
     _friendsViewModel = FriendsViewModel();
     _profileViewModel = ProfileViewModel();
-    _mapViewModel.initialize();
+  }
+
+  Future<void> _initializeMapViewModel() async {
+    final permissionStatus = await _requestLocationPermissionIfNeeded();
+    final hasLocationPermission = _isLocationPermissionGranted(
+      permissionStatus,
+    );
+    _hasLocationPermission = hasLocationPermission;
+
+    await _mapViewModel.initialize(
+      enableCurrentLocationTracking: hasLocationPermission,
+    );
+
+    if (!mounted) return;
+    if (!hasLocationPermission) {
+      _showLocationPermissionSnackbar(permissionStatus);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncLocationPermissionAfterResume());
+    }
+  }
+
+  Future<void> _syncLocationPermissionAfterResume() async {
+    final status = await Permission.location.status;
+    final isGranted = _isLocationPermissionGranted(status);
+    if (isGranted == _hasLocationPermission) {
+      return;
+    }
+
+    _hasLocationPermission = isGranted;
+
+    if (isGranted) {
+      await _mapViewModel.enableCurrentUserLocationTracking();
+      return;
+    }
+
+    await _mapViewModel.disableCurrentUserLocationTracking();
+    if (!mounted) return;
+    _showLocationPermissionSnackbar(status);
+  }
+
+  Future<PermissionStatus> _requestLocationPermissionIfNeeded() async {
+    final status = await Permission.location.status;
+    if (_isLocationPermissionGranted(status) || status.isPermanentlyDenied) {
+      return status;
+    }
+
+    if (status.isDenied) {
+      return Permission.location.request();
+    }
+
+    return status;
+  }
+
+  bool _isLocationPermissionGranted(PermissionStatus status) {
+    return status.isGranted || status.isLimited;
+  }
+
+  void _showLocationPermissionSnackbar(PermissionStatus status) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Location access is disabled. Your marker and centering are unavailable.',
+        ),
+        action: SnackBarAction(
+          label: status.isPermanentlyDenied ? 'Settings' : 'Allow',
+          onPressed: status.isPermanentlyDenied
+              ? openAppSettings
+              : () => unawaited(_retryLocationPermission()),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _retryLocationPermission() async {
+    final status = await Permission.location.request();
+    final isGranted = _isLocationPermissionGranted(status);
+    _hasLocationPermission = isGranted;
+
+    if (isGranted) {
+      await _mapViewModel.enableCurrentUserLocationTracking();
+      return;
+    }
+
+    if (!mounted) return;
+    _showLocationPermissionSnackbar(status);
   }
 
   void _onEventMarkerTapped(EventItem event) {
@@ -288,16 +369,6 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       ..setIconStyle(
         IconStyle(anchor: math.Point(0.5, 0.5), scale: 2, zIndex: 20.0),
       );
-
-    placemark.setText('Вы');
-    placemark.setTextStyle(
-      mapkit_anim.TextStyle(
-        placement: mapkit_anim.TextStylePlacement.Top,
-        outlineColor: Colors.white,
-        outlineWidth: 1.0,
-        offset: 4.0,
-      ),
-    );
   }
 
   @override
