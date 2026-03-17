@@ -1,43 +1,16 @@
-services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: geolink-api
-    ports:
-      - "5000:8080"
-    env_file:
-      - .env
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - ConnectionStrings__Redis=redis:6379
-      - Jwt__Key=${JWT_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - geolink-network
-    restart: unless-stopped
+name: geolink
 
+services:
   postgres:
     image: postgres:16-alpine
-    container_name: geolink-postgres
-    ports:
-      - "5432:5432"
-    env_file:
-      - .env
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -47,41 +20,16 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: geolink-redis
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
     networks:
       - geolink-network
-    restart: unless-stopped
-
-  # pgAdmin for database management (optional, for development)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: geolink-pgadmin
-    ports:
-      - "5050:80"
-    env_file:
-      - .env
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    depends_on:
-      - postgres
-    networks:
-      - geolink-network
-    profiles:
-      - dev
     restart: unless-stopped
 
 volumes:
   postgres-data:
   redis-data:
-  pgadmin-data:
 
 networks:
   geolink-network:

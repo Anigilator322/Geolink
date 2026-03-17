@@ -5,9 +5,11 @@ using Geolink.API.Hubs;
 using Geolink.API.Realtime;
 using Geolink.Application;
 using Geolink.Infrastructure;
+using Geolink.Infrastructure.Data;
 using Geolink.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Geolink.API;
@@ -28,24 +30,24 @@ public class Program
         var redisConnection = builder.Configuration.GetConnectionString("Redis");
         var jwtKey = builder.Configuration["Jwt:Key"];
 
-        if (builder.Environment.IsDevelopment() || builder.Environment.IsProduction())
+        if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging() || builder.Environment.IsProduction())
         {
             if (string.IsNullOrWhiteSpace(defaultConnection))
             {
                 throw new InvalidOperationException(
-                    "Missing ConnectionStrings:DefaultConnection. Configure it via user-secrets or environment variables.");
+                    "Missing ConnectionStrings:DefaultConnection. Configure it via appsettings or environment variables.");
             }
 
             if (string.IsNullOrWhiteSpace(redisConnection))
             {
                 throw new InvalidOperationException(
-                    "Missing ConnectionStrings:Redis. Configure it via user-secrets or environment variables.");
+                    "Missing ConnectionStrings:Redis. Configure it via appsettings or environment variables.");
             }
 
             if (string.IsNullOrWhiteSpace(jwtKey))
             {
                 throw new InvalidOperationException(
-                    "Missing Jwt:Key. Configure it via user-secrets or environment variables.");
+                    "Missing Jwt:Key. Configure it via appsettings or environment variables.");
             }
 
             if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
@@ -127,6 +129,12 @@ public class Program
             builder.Configuration.GetSection("YandexCloudPostbox"));
 
         var app = builder.Build();
+        
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<GeolinkDbContext>();
+            dbContext.Database.Migrate();
+        }
 
         if (app.Environment.IsDevelopment())
         {

@@ -17,10 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Geolink.Application\Geolink.Application.csproj" />
     <ProjectReference Include="..\Geolink.Infrastructure\Geolink.Infrastructure.csproj" />
   </ItemGroup>
