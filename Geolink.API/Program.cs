@@ -28,24 +28,24 @@ public class Program
         var redisConnection = builder.Configuration.GetConnectionString("Redis");
         var jwtKey = builder.Configuration["Jwt:Key"];
 
-        if (builder.Environment.IsDevelopment() || builder.Environment.IsProduction())
+        if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging() || builder.Environment.IsProduction())
         {
             if (string.IsNullOrWhiteSpace(defaultConnection))
             {
                 throw new InvalidOperationException(
-                    "Missing ConnectionStrings:DefaultConnection. Configure it via user-secrets or environment variables.");
+                    "Missing ConnectionStrings:DefaultConnection. Configure it via appsettings or environment variables.");
             }
 
             if (string.IsNullOrWhiteSpace(redisConnection))
             {
                 throw new InvalidOperationException(
-                    "Missing ConnectionStrings:Redis. Configure it via user-secrets or environment variables.");
+                    "Missing ConnectionStrings:Redis. Configure it via appsettings or environment variables.");
             }
 
             if (string.IsNullOrWhiteSpace(jwtKey))
             {
                 throw new InvalidOperationException(
-                    "Missing Jwt:Key. Configure it via user-secrets or environment variables.");
+                    "Missing Jwt:Key. Configure it via appsettings or environment variables.");
             }
 
             if (Encoding.UTF8.GetByteCount(jwtKey) < 32)

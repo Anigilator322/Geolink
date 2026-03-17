@@ -134,3 +134,7 @@ dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=geolink;Username=postgres;Password=<NEW_PASSWORD>"
 dotnet user-secrets set "Jwt:Key" "<STRONG_RANDOM_KEY_32+>"
 ```
+
+## Deployment Modes (updated)
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the current 3-mode workflow (`local`, `staging`, `prod`), env files, and Docker commands.
