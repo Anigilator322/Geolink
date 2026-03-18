@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -50,6 +51,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
   MapObjectCollection? _eventPlacemarks;
   MapObjectCollection? _currentUserPlacemark;
   bool _hasLocationPermission = false;
+  bool _isLocationServiceEnabled = false;
 
   late final _friendPinImage = mapkiti.ImageProvider.fromImageProvider(
     const AssetImage('assets/icon/pin.png'),
@@ -82,42 +84,63 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     final hasLocationPermission = _isLocationPermissionGranted(
       permissionStatus,
     );
+    final isLocationServiceEnabled = hasLocationPermission
+        ? await geo.Geolocator.isLocationServiceEnabled()
+        : false;
     _hasLocationPermission = hasLocationPermission;
+    _isLocationServiceEnabled = isLocationServiceEnabled;
 
     await _mapViewModel.initialize(
-      enableCurrentLocationTracking: hasLocationPermission,
+      enableCurrentLocationTracking:
+          hasLocationPermission && isLocationServiceEnabled,
     );
 
     if (!mounted) return;
     if (!hasLocationPermission) {
       _showLocationPermissionSnackbar(permissionStatus);
+      return;
+    }
+
+    if (!isLocationServiceEnabled) {
+      _showLocationServiceSnackbar();
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_syncLocationPermissionAfterResume());
+      unawaited(_syncLocationAccessAfterResume());
     }
   }
 
-  Future<void> _syncLocationPermissionAfterResume() async {
+  Future<void> _syncLocationAccessAfterResume() async {
     final status = await Permission.location.status;
-    final isGranted = _isLocationPermissionGranted(status);
-    if (isGranted == _hasLocationPermission) {
+    final hasPermission = _isLocationPermissionGranted(status);
+    final isServiceEnabled = hasPermission
+        ? await geo.Geolocator.isLocationServiceEnabled()
+        : false;
+
+    if (hasPermission == _hasLocationPermission &&
+        isServiceEnabled == _isLocationServiceEnabled) {
       return;
     }
 
-    _hasLocationPermission = isGranted;
+    _hasLocationPermission = hasPermission;
+    _isLocationServiceEnabled = isServiceEnabled;
 
-    if (isGranted) {
+    if (hasPermission && isServiceEnabled) {
       await _mapViewModel.enableCurrentUserLocationTracking();
       return;
     }
 
     await _mapViewModel.disableCurrentUserLocationTracking();
     if (!mounted) return;
-    _showLocationPermissionSnackbar(status);
+    if (!hasPermission) {
+      _showLocationPermissionSnackbar(status);
+      return;
+    }
+
+    _showLocationServiceSnackbar();
   }
 
   Future<PermissionStatus> _requestLocationPermissionIfNeeded() async {
@@ -155,18 +178,81 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     );
   }
 
+  void _showLocationServiceSnackbar() {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Location services are turned off. Enable GPS to show your marker and centering.',
+        ),
+        action: SnackBarAction(
+          label: 'Enable',
+          onPressed: () => unawaited(_openLocationSettings()),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openLocationSettings() async {
+    await geo.Geolocator.openLocationSettings();
+  }
+
   Future<void> _retryLocationPermission() async {
     final status = await Permission.location.request();
-    final isGranted = _isLocationPermissionGranted(status);
-    _hasLocationPermission = isGranted;
+    final hasPermission = _isLocationPermissionGranted(status);
+    _hasLocationPermission = hasPermission;
 
-    if (isGranted) {
+    if (!hasPermission) {
+      if (!mounted) return;
+      _showLocationPermissionSnackbar(status);
+      return;
+    }
+
+    final isServiceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+    _isLocationServiceEnabled = isServiceEnabled;
+
+    if (isServiceEnabled) {
       await _mapViewModel.enableCurrentUserLocationTracking();
       return;
     }
 
+    await _mapViewModel.disableCurrentUserLocationTracking();
     if (!mounted) return;
-    _showLocationPermissionSnackbar(status);
+    _showLocationServiceSnackbar();
+  }
+
+  void _onCurrentLocationButtonTapped() {
+    unawaited(_handleCurrentLocationButtonTap());
+  }
+
+  Future<void> _handleCurrentLocationButtonTap() async {
+    if (!_hasLocationPermission) {
+      final status = await Permission.location.status;
+      if (!mounted) {
+        return;
+      }
+      _showLocationPermissionSnackbar(status);
+      return;
+    }
+
+    if (!_isLocationServiceEnabled) {
+      if (!mounted) {
+        return;
+      }
+      _showLocationServiceSnackbar();
+      return;
+    }
+
+    final currentLocation = _mapViewModel.state.currentUserLocation;
+    if (currentLocation == null) {
+      await _mapViewModel.enableCurrentUserLocationTracking();
+      if (!mounted) {
+        return;
+      }
+    }
+
+    _centerOnCurrentUser();
   }
 
   void _onEventMarkerTapped(EventItem event) {
@@ -360,7 +446,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
       return;
     }
 
-    final placemark = _currentUserPlacemark!.addPlacemark()
+    _currentUserPlacemark!.addPlacemark()
       ..geometry = Point(
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
@@ -466,8 +552,10 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
         listenable: _mapViewModel,
         builder: (context, _) {
           final hasLocation = _mapViewModel.state.currentUserLocation != null;
+          final canUseLocation =
+              _hasLocationPermission && _isLocationServiceEnabled;
           return GestureDetector(
-            onTap: hasLocation ? _centerOnCurrentUser : null,
+            onTap: _onCurrentLocationButtonTapped,
             child: Container(
               width: 48,
               height: 48,
@@ -484,7 +572,9 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
               ),
               child: Icon(
                 Icons.my_location,
-                color: hasLocation ? Colors.black87 : Colors.black38,
+                color: hasLocation
+                    ? Colors.black87
+                    : (canUseLocation ? Colors.black54 : Colors.black38),
                 size: 24,
               ),
             ),
