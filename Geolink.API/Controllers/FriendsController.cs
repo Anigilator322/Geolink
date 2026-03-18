@@ -29,7 +29,16 @@ namespace Geolink.API.Controllers
             var friendships = await _unitOfWork.Friendships.GetUserFriendsAsync(userId, Domain.Enums.FriendshipStatus.Approved, 
                 cancellationToken);
             var friends = friendships
-                .Select(f => new FriendDto(f.Addressee.Id, f.Addressee.UserName, f.Addressee.AvatarUrl, f.Status, f.CreatedAt))
+                .Select(f =>
+                {
+                    var friend = f.RequesterId == userId ? f.Addressee : f.Requester;
+                    return new FriendDto(
+                        friend.Id,
+                        friend.UserName ?? string.Empty,
+                        friend.AvatarUrl,
+                        f.Status,
+                        f.CreatedAt);
+                })
                 .ToList();
             return Ok(friends);
         }
@@ -51,8 +60,8 @@ namespace Geolink.API.Controllers
                 return BadRequest(result.Error);
 
             return Ok(new FriendDto(
-                result.Value.Friendship.Id, 
-                result.Value.Friendship.Addressee.NormalizedUserName,
+                result.Value.Friendship.Addressee.Id,
+                result.Value.Friendship.Addressee.UserName ?? string.Empty,
                 result.Value.Friendship.Addressee.AvatarUrl,
                 result.Value.Friendship.Status,
                 result.Value.Friendship.CreatedAt));
