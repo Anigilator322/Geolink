@@ -29,6 +29,10 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequiredLength = 1;
+                options.User.AllowedUserNameCharacters =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+ " +
+            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
+            "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<GeolinkDbContext>()
