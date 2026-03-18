@@ -15,6 +15,11 @@ public record UpdateUserRequest(
     string? AvatarUrl
 );
 
+public record UpdateProfileRequest(
+    string? Username,
+    string? Bio
+);
+
 public record UserSearchResult(
     Guid Id,
     string Username,

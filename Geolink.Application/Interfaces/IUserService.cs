@@ -6,5 +6,6 @@ namespace Geolink.Application.Interfaces
     {
         public Task<bool> CreateUserAsync(User user);
         public Task<User> GetUserAsync(Guid userId);
+        public Task<bool> UpdateUserAsync(User user);
     }
 }
