@@ -19,11 +19,12 @@ namespace Geolink.API.Controllers
         [HttpGet()]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetProfile(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetProfile()
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized();
             var user = await _userService.GetUserAsync(userId);
+            if (user == null) return NotFound();
             return Ok(new
             {
                 Name = user.UserName,
@@ -35,7 +36,7 @@ namespace Geolink.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized();
