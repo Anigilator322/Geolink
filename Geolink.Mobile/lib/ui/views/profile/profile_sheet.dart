@@ -182,10 +182,20 @@ class _ProfileSheetState extends State<ProfileSheet> {
         width: double.infinity,
         height: 50,
         child: ElevatedButton(
-          onPressed: () => widget.viewModel.saveProfile(
-            newUsername: _usernameController.text,
-            newBio: _bioController.text,
-          ),
+        onPressed: widget.viewModel.isSaving ? null : () async {
+                final ok = await widget.viewModel.saveProfile(
+                  newUsername: _usernameController.text,
+                  newBio: _bioController.text,
+                );
+
+                if (!mounted) return;
+
+                if (!ok && widget.viewModel.error != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(widget.viewModel.error!)),
+                  );
+                }
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             elevation: 0,
@@ -193,10 +203,19 @@ class _ProfileSheetState extends State<ProfileSheet> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: const Text(
-            'Сохранить',
-            style: TextStyle(color: Colors.white, fontSize: 14),
-          ),
+          child: widget.viewModel.isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text(
+                  'Сохранить',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
         ),
       );
     }
