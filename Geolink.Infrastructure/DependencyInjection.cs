@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<IUpdateUserLocationUseCase, UpdateUserLocationUseCase>();
         services.AddScoped<ISendAuthCodeUseCase, SendAuthCodeUseCase>();
         services.AddScoped<IVerifyCodeUseCase, VerifyCodeUseCase>();
+        services.AddScoped<IRefreshTokenUseCase, RefreshTokenUseCase>();
         services.AddScoped<IAddFriendUseCase, AddFriendUseCase>();
 
         // Конфигурация YandexCloudPostbox

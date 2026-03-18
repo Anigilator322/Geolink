@@ -35,7 +35,16 @@ class GeolinkHubService {
         .withUrl(
           '${ApiConfig.apiDomain}/hubs/geolink',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => token,
+            accessTokenFactory: () async {
+              final latestToken = await _tokenStorage.getAccessToken();
+              if (latestToken == null || latestToken.isEmpty) {
+                throw StateError(
+                  'Access token is missing. Cannot connect to hub.',
+                );
+              }
+
+              return latestToken;
+            },
             transport: HttpTransportType.WebSockets,
           ),
         )
