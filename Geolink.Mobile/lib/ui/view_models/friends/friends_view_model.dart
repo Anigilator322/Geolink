@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:geolink_mobile/data/services/realtime/geolink_hub_service.dart';
 
 import '../../../data/repositories/friends_repository.dart';
 
@@ -21,6 +24,8 @@ class FriendsViewModel extends ChangeNotifier {
     : _repository = repository ?? FriendsRepository();
 
   final FriendsRepository _repository;
+
+  StreamSubscription<FriendRequestNotification>? _friendRequestSubscription;
 
   List<FriendListItem> myFriends = const [];
   List<FriendListItem> incomingRequests = const [];
@@ -50,6 +55,12 @@ class FriendsViewModel extends ChangeNotifier {
     try {
       final friends = await _repository.getFriends();
       final pendingRequests = await _repository.getPendingRequests();
+
+      await _friendRequestSubscription?.cancel();
+      _friendRequestSubscription = _repository.friendRequestReceived.listen(
+        _onFriendRequestReceived,
+        onError: _onFriendRequestStreamError,
+      );
 
       myFriends = friends
           .map(
@@ -180,5 +191,15 @@ class FriendsViewModel extends ChangeNotifier {
     }
 
     searchResults = [...myFriends, ...incomingRequests];
+  }
+
+  void _onFriendRequestReceived(FriendRequestNotification event) {
+    incomingRequests.add(new FriendListItem(userId: event.userId, displayName: event.username, bio: ''));
+    notifyListeners();
+  }
+
+  void _onFriendRequestStreamError(Object error) {
+    print('Friend request stream error: $error');
+    notifyListeners();
   }
 }
