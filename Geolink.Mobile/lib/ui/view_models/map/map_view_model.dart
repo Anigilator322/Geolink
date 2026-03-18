@@ -31,6 +31,9 @@ class MapViewModel extends ChangeNotifier {
     );
 
     try {
+      final latestFriendLocations = await _getLatestFriendLocationsSafe();
+      state = state.applyState(friendLocations: latestFriendLocations);
+
       await _locationRepository.connectRealtime();
 
       await _friendLocationSubscription?.cancel();
@@ -194,6 +197,14 @@ class MapViewModel extends ChangeNotifier {
       notifyListeners();
     } finally {
       _isSendingLocation = false;
+    }
+  }
+
+  Future<List<Location>> _getLatestFriendLocationsSafe() async {
+    try {
+      return await _locationRepository.getLatestFriendLocations();
+    } catch (_) {
+      return const [];
     }
   }
 
