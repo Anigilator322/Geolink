@@ -16,8 +16,22 @@ class GeolinkHubService {
 
   final StreamController<Location> _friendLocationUpdates =
       StreamController<Location>.broadcast();
+  final StreamController<FriendRequestNotification> _friendRequestReceived =
+      StreamController<FriendRequestNotification>.broadcast();
+  final StreamController<EventInvitationNotification> _eventInvitations =
+      StreamController<EventInvitationNotification>.broadcast();
+  final StreamController<String> _friendOnlineUpdates =
+      StreamController<String>.broadcast();
+  final StreamController<String> _friendOfflineUpdates =
+      StreamController<String>.broadcast();
 
   Stream<Location> get friendLocationUpdates => _friendLocationUpdates.stream;
+  Stream<FriendRequestNotification> get friendRequestReceived =>
+      _friendRequestReceived.stream;
+  Stream<EventInvitationNotification> get eventInvitations =>
+      _eventInvitations.stream;
+  Stream<String> get friendOnlineUpdates => _friendOnlineUpdates.stream;
+  Stream<String> get friendOfflineUpdates => _friendOfflineUpdates.stream;
 
   bool get isConnected => _connection?.state == HubConnectionState.Connected;
 
@@ -35,7 +49,16 @@ class GeolinkHubService {
         .withUrl(
           '${ApiConfig.apiDomain}/hubs/geolink',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => token,
+            accessTokenFactory: () async {
+              final latestToken = await _tokenStorage.getAccessToken();
+              if (latestToken == null || latestToken.isEmpty) {
+                throw StateError(
+                  'Access token is missing. Cannot connect to hub.',
+                );
+              }
+
+              return latestToken;
+            },
             transport: HttpTransportType.WebSockets,
           ),
         )
@@ -70,9 +93,60 @@ class GeolinkHubService {
     );
   }
 
+  Future<void> sendFriendRequest({required String addresseeId}) async {
+    final normalizedAddresseeId = addresseeId.trim();
+    if (normalizedAddresseeId.isEmpty) {
+      throw ArgumentError.value(
+        addresseeId,
+        'addresseeId',
+        'addresseeId must not be empty.',
+      );
+    }
+
+    final connection = _requireConnection();
+    await connection.invoke(
+      'SendFriendRequest',
+      args: <Object>[normalizedAddresseeId],
+    );
+  }
+
+  Future<void> notifyEventInvitation({
+    required String eventId,
+    required String inviteeId,
+  }) async {
+    final normalizedEventId = eventId.trim();
+    final normalizedInviteeId = inviteeId.trim();
+
+    if (normalizedEventId.isEmpty) {
+      throw ArgumentError.value(
+        eventId,
+        'eventId',
+        'eventId must not be empty.',
+      );
+    }
+
+    if (normalizedInviteeId.isEmpty) {
+      throw ArgumentError.value(
+        inviteeId,
+        'inviteeId',
+        'inviteeId must not be empty.',
+      );
+    }
+
+    final connection = _requireConnection();
+    await connection.invoke(
+      'NotifyEventInvitation',
+      args: <Object>[normalizedEventId, normalizedInviteeId],
+    );
+  }
+
   Future<void> dispose() async {
     await disconnect();
     await _friendLocationUpdates.close();
+    await _friendRequestReceived.close();
+    await _eventInvitations.close();
+    await _friendOnlineUpdates.close();
+    await _friendOfflineUpdates.close();
   }
 
   HubConnection _requireConnection() {
@@ -94,6 +168,50 @@ class GeolinkHubService {
       final location = _parseFriendLocation(arguments.first);
       if (location != null) {
         _friendLocationUpdates.add(location);
+      }
+    });
+
+    connection.on('FriendRequestReceived', (arguments) {
+      if (arguments == null || arguments.isEmpty) {
+        return;
+      }
+
+      final notification = _parseFriendRequestNotification(arguments.first);
+      if (notification != null) {
+        _friendRequestReceived.add(notification);
+      }
+    });
+
+    connection.on('EventInvitation', (arguments) {
+      if (arguments == null || arguments.isEmpty) {
+        return;
+      }
+
+      final notification = _parseEventInvitation(arguments.first);
+      if (notification != null) {
+        _eventInvitations.add(notification);
+      }
+    });
+
+    connection.on('FriendOnline', (arguments) {
+      if (arguments == null || arguments.isEmpty) {
+        return;
+      }
+
+      final userId = _parseUserId(arguments.first);
+      if (userId != null) {
+        _friendOnlineUpdates.add(userId);
+      }
+    });
+
+    connection.on('FriendOffline', (arguments) {
+      if (arguments == null || arguments.isEmpty) {
+        return;
+      }
+
+      final userId = _parseUserId(arguments.first);
+      if (userId != null) {
+        _friendOfflineUpdates.add(userId);
       }
     });
   }
@@ -125,6 +243,62 @@ class GeolinkHubService {
       longitude: longitude,
       updatedAt: updatedAt,
     );
+  }
+
+  FriendRequestNotification? _parseFriendRequestNotification(Object? raw) {
+    final map = _toStringKeyMap(raw);
+
+    final userId = _readString(map, ['userId', 'UserId']);
+    if (userId == null) {
+      return null;
+    }
+
+    final username = _readString(map, ['username', 'Username']) ?? '';
+    final avatarUrl = _readString(map, ['avatarUrl', 'AvatarUrl']);
+
+    return FriendRequestNotification(
+      userId: userId,
+      username: username,
+      avatarUrl: avatarUrl,
+    );
+  }
+
+  EventInvitationNotification? _parseEventInvitation(Object? raw) {
+    final map = _toStringKeyMap(raw);
+
+    final eventId = _readString(map, ['eventId', 'EventId']);
+    final inviterId = _readString(map, ['inviterId', 'InviterId']);
+
+    if (eventId == null || inviterId == null) {
+      return null;
+    }
+
+    final title = _readString(map, ['title', 'Title']) ?? '';
+
+    return EventInvitationNotification(
+      eventId: eventId,
+      inviterId: inviterId,
+      title: title,
+    );
+  }
+
+  String? _parseUserId(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+
+    if (raw is String) {
+      final userId = raw.trim();
+      return userId.isNotEmpty ? userId : null;
+    }
+
+    if (raw is Map) {
+      final map = _toStringKeyMap(raw);
+      return _readString(map, ['userId', 'UserId', 'id', 'Id']);
+    }
+
+    final userId = raw.toString().trim();
+    return userId.isNotEmpty ? userId : null;
   }
 
   Map<String, dynamic> _toStringKeyMap(Object? raw) {
@@ -172,4 +346,28 @@ class GeolinkHubService {
 
     return null;
   }
+}
+
+class FriendRequestNotification {
+  const FriendRequestNotification({
+    required this.userId,
+    required this.username,
+    this.avatarUrl,
+  });
+
+  final String userId;
+  final String username;
+  final String? avatarUrl;
+}
+
+class EventInvitationNotification {
+  const EventInvitationNotification({
+    required this.eventId,
+    required this.inviterId,
+    required this.title,
+  });
+
+  final String eventId;
+  final String inviterId;
+  final String title;
 }

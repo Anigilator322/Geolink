@@ -1,4 +1,5 @@
 import '../models/location.dart';
+import '../services/api/location_api_service.dart';
 import '../services/local/location_service.dart';
 import '../services/realtime/geolink_hub_service.dart';
 
@@ -6,11 +7,14 @@ class LocationRepository {
   LocationRepository({
     GeolinkHubService? hubService,
     LocationService? locationService,
+    LocationApiService? locationApiService,
   }) : _hubService = hubService ?? GeolinkHubService(),
-       _locationService = locationService ?? LocationService();
+       _locationService = locationService ?? LocationService(),
+       _locationApiService = locationApiService ?? LocationApiService();
 
   final GeolinkHubService _hubService;
   final LocationService _locationService;
+  final LocationApiService _locationApiService;
 
   Stream<Location> get friendLocationUpdates =>
       _hubService.friendLocationUpdates;
@@ -41,6 +45,10 @@ class LocationRepository {
       latitude: location.latitude,
       longitude: location.longitude,
     );
+  }
+
+  Future<List<Location>> getLatestFriendLocations() {
+    return _locationApiService.getLatestFriendLocations();
   }
 
   Future<void> dispose() async {

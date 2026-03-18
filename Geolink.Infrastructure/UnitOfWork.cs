@@ -11,6 +11,7 @@ public class UnitOfWork : IUnitOfWork
     private IDbContextTransaction? _transaction;
 
     private IUserRepository? _users;
+    private IRefreshTokenRepository? _refreshTokens;
     private IFriendshipRepository? _friendships;
     private IUserLocationRepository? _userLocations;
     private IEventRepository? _events;
@@ -21,6 +22,8 @@ public class UnitOfWork : IUnitOfWork
     }
 
     public IUserRepository Users => _users ??= new UserRepository(_context);
+    public IRefreshTokenRepository RefreshTokens =>
+        _refreshTokens ??= new RefreshTokenRepository(_context);
     public IFriendshipRepository Friendships => _friendships ??= new FriendshipRepository(_context);
     public IUserLocationRepository UserLocations => _userLocations ??= new UserLocationRepository(_context);
     public IEventRepository Events => _events ??= new EventRepository(_context);
