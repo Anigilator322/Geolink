@@ -15,17 +15,20 @@ namespace Geolink.Application.UseCases
         public async override Task<Result<AddFriendResponse>> ExecuteAsync(AddFriendRequest request, CancellationToken ct)
         {
             var user = await _unitOfWork.Users.GetByIdAsync(request.IssuerId, ct);
-            if(user is null)
+            if (user is null)
                 return Result<AddFriendResponse>.NotFound("Issuer user not found");
 
             var addressee = await _unitOfWork.Users.GetByEmailAsync(request.AddresseeUsername, ct);
-            if(addressee is null)
+            
+            if (addressee is null)
                 return Result<AddFriendResponse>.NotFound("Addressee user not found");
 
-            var isFriendshipExist = await _unitOfWork.Friendships.AreFriendsAsync(user.Id, addressee.Id, ct);
-            if (isFriendshipExist)
+            if (user.Id == addressee.Id)
+                return Result<AddFriendResponse>.Failure("You cannot send a friend request to yourself");
+
+            var existingFriendship = await _unitOfWork.Friendships.GetFriendshipAsync(user.Id, addressee.Id, ct);
+            if (existingFriendship is not null)
             {
-                var existingFriendship = await _unitOfWork.Friendships.GetFriendshipAsync(user.Id, addressee.Id, ct);
                 return Result<AddFriendResponse>.Success(new AddFriendResponse(existingFriendship));
             }
 
@@ -37,7 +40,19 @@ namespace Geolink.Application.UseCases
             };
 
             var friendship = await _unitOfWork.Friendships.AddAsync(newFriendship, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
+            try
+            {
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+            catch (Exception) when (!ct.IsCancellationRequested)
+            {
+                var savedFriendship = await _unitOfWork.Friendships.GetFriendshipAsync(user.Id, addressee.Id, ct);
+                if (savedFriendship is not null)
+                    return Result<AddFriendResponse>.Success(new AddFriendResponse(savedFriendship));
+
+                throw;
+            }
+
             return Result<AddFriendResponse>.Success(new AddFriendResponse(friendship));
         }
     }
