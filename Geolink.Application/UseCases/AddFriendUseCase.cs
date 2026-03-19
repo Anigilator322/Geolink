@@ -19,6 +19,7 @@ namespace Geolink.Application.UseCases
                 return Result<AddFriendResponse>.NotFound("Issuer user not found");
 
             var addressee = await _unitOfWork.Users.GetByEmailAsync(request.AddresseeUsername, ct);
+            
             if (addressee is null)
                 return Result<AddFriendResponse>.NotFound("Addressee user not found");
 
