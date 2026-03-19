@@ -57,14 +57,22 @@ namespace Geolink.API.Controllers
             ), cancellationToken);
 
             if (!result.IsSuccess)
-                return BadRequest(result.Error);
+                return StatusCode(result.StatusCode ?? StatusCodes.Status400BadRequest, result.Error);
+
+            if (result.Value is null)
+                return StatusCode(StatusCodes.Status500InternalServerError, "Unexpected empty response");
+
+            var friendship = result.Value.Friendship;
+            var friend = friendship.RequesterId == userId
+                ? friendship.Addressee
+                : friendship.Requester;
 
             return Ok(new FriendDto(
-                result.Value.Friendship.Addressee.Id,
-                result.Value.Friendship.Addressee.UserName ?? string.Empty,
-                result.Value.Friendship.Addressee.AvatarUrl,
-                result.Value.Friendship.Status,
-                result.Value.Friendship.CreatedAt));
+                friend.Id,
+                friend.UserName ?? string.Empty,
+                friend.AvatarUrl,
+                friendship.Status,
+                friendship.CreatedAt));
         }
 
         [HttpPost("get-pending-requests")]
