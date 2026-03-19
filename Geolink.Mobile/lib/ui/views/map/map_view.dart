@@ -69,8 +69,11 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initViewModels();
     unawaited(_initializeMapViewModel());
+    unawaited(_initializeScreen());
   }
-
+  Future<void> _initializeScreen() async {
+    await Future.wait([_initializeMapViewModel(), _profileViewModel.loadProfile(),]);
+  }
   void _initViewModels() {
     _mapViewModel = MapViewModel();
     _eventsViewModel = EventsViewModel();
@@ -357,6 +360,7 @@ class _MapViewState extends State<MapView> with WidgetsBindingObserver {
           _activeSheet = _ActiveSheet.none;
       }
     });
+      if (index == 4) {unawaited(_profileViewModel.loadProfile());}
   }
 
   void _closeAllSheets() {

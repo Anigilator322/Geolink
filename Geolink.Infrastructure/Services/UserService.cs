@@ -30,5 +30,11 @@ namespace Geolink.Infrastructure.Services
         {
             return await _unitOfWork.Users.GetByIdAsync(userId);
         }
+        public async Task<bool> UpdateUserAsync(User user)
+        {
+            user.UpdatedAt = DateTime.UtcNow;
+            var result = await _userManager.UpdateAsync(user);
+            return result.Succeeded;
+        }
     }
 }
