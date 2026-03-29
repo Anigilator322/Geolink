@@ -25,6 +25,13 @@ public class AuthController : ControllerBase
         _sendAuthCode = sendAuthCode;
     }
 
+    [HttpGet("health")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Health()
+    {
+        return Ok(new { message = "Auth API is running" });
+    }
+
     [HttpPost("send-code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
