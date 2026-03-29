@@ -136,10 +136,7 @@ public class Program
             dbContext.Database.Migrate();
         }
 
-        if (app.Environment.IsDevelopment())
-        {
-            app.MapOpenApi();
-        }
+        app.MapOpenApi();
 
         if (!app.Environment.IsDevelopment())
         {
