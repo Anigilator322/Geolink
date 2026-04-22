@@ -33,7 +33,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("send-code")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SendCode([FromBody] SendCodeRequest request, CancellationToken cancellationToken)
     {
@@ -43,9 +43,17 @@ public class AuthController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(result.Error);
 
-        _logger.LogInformation("OTP code requested for {Email}", request.Email);
+        _logger.LogInformation("User signed in by email for {Email}", request.Email);
 
-        return Ok(new { message = "Code sent" });
+        var response = new AuthResponse(
+            result.Value!.UserId,
+            result.Value.Email,
+            result.Value.Username,
+            result.Value.AccessToken,
+            result.Value.RefreshToken,
+            result.Value.ExpiresAt);
+
+        return Ok(response);
     }
 
     [HttpPost("verify-code")]
